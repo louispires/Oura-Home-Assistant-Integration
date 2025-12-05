@@ -31,13 +31,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Oura Ring from a config entry."""
     _LOGGER.debug("Setting up Oura Ring entry. Entry data keys: %s", list(entry.data.keys()))
     
-    implementation = (
+    Implementation = (
         await config_entry_oauth2_flow.async_get_config_entry_implementation(
             hass, entry
         )
     )
 
-    session = config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation)
+    session = config_entry_oauth2_flow.OAuth2Session(hass, entry, Implementation)
     
     # Log session state for debugging
     _LOGGER.debug("OAuth2Session created. Valid token: %s", session.valid_token)

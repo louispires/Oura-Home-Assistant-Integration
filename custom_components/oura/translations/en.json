@@ -3,11 +3,20 @@
     "step": {
       "pick_implementation": {
         "title": "Choose Authentication Method"
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Oura Ring",
+        "description": "Your Oura Ring authentication has expired. Please re-authenticate to continue receiving data."
       }
     },
     "abort": {
-      "already_configured": "Account is already configured",
-      "oauth_error": "OAuth2 authentication error"
+      "already_configured": "This Oura account is already configured",
+      "oauth_error": "OAuth2 authentication error",
+      "cannot_connect": "Failed to connect to Oura API",
+      "unknown": "An unexpected error occurred",
+      "invalid_user_info": "Could not retrieve user information from Oura",
+      "wrong_account": "You must re-authenticate with the same Oura account",
+      "reauth_successful": "Re-authentication successful"
     },
     "create_entry": {
       "default": "Successfully authenticated with Oura Ring"
