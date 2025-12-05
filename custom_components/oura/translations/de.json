@@ -1,0 +1,95 @@
+{
+  "config": {
+    "step": {
+      "pick_implementation": {
+        "title": "Authentifizierungsmethode wählen"
+      },
+      "reauth_confirm": {
+        "title": "Oura Ring erneut authentifizieren",
+        "description": "Ihre Oura Ring-Authentifizierung ist abgelaufen. Bitte authentifizieren Sie sich erneut, um weiterhin Daten zu erhalten."
+      }
+    },
+    "abort": {
+      "already_configured": "Dieses Oura-Konto ist bereits konfiguriert",
+      "oauth_error": "OAuth2-Authentifizierungsfehler",
+      "cannot_connect": "Verbindung zur Oura-API fehlgeschlagen",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten",
+      "invalid_user_info": "Benutzerinformationen konnten nicht von Oura abgerufen werden",
+      "wrong_account": "Sie müssen sich mit demselben Oura-Konto erneut authentifizieren",
+      "reauth_successful": "Erneute Authentifizierung erfolgreich"
+    },
+    "create_entry": {
+      "default": "Erfolgreich mit Oura Ring authentifiziert"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Oura Ring Optionen",
+        "description": "Konfigurieren Sie, wie oft Oura Ring-Daten abgerufen werden und wie viele Monate historischer Daten beim ersten Setup geladen werden sollen.",
+        "data": {
+          "update_interval": "Aktualisierungsintervall (Minuten)",
+          "historical_months": "Historische Monate zum Laden (1-48, gilt nur beim ersten Setup)",
+          "historical_data_imported": "Historische Daten bereits importiert"
+        },
+        "data_description": {
+          "update_interval": "Wie oft neue Daten von der Oura-API abgerufen werden (1-60 Minuten)",
+          "historical_months": "Anzahl der Monate historischer Daten, die beim ersten Setup oder beim erneuten Import importiert werden (1-48 Monate, bis zu 4 Jahre)",
+          "historical_data_imported": "AUS schalten, um historische Daten beim nächsten Neustart erneut zu importieren. WARNUNG: Dies löst einen vollständigen Import historischer Daten aus!"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sleep_score": {"name": "Schlafwert"},
+      "total_sleep_duration": {"name": "Gesamtschlafdauer"},
+      "deep_sleep_duration": {"name": "Tiefschlafdauer"},
+      "rem_sleep_duration": {"name": "REM-Schlafdauer"},
+      "light_sleep_duration": {"name": "Leichtschlafdauer"},
+      "awake_time": {"name": "Wachzeit"},
+      "sleep_efficiency": {"name": "Schlafeffizienz"},
+      "restfulness": {"name": "Erholsamkeit"},
+      "sleep_latency": {"name": "Einschlafzeit"},
+      "sleep_timing": {"name": "Schlafzeitpunkt"},
+      "deep_sleep_percentage": {"name": "Tiefschlafanteil"},
+      "rem_sleep_percentage": {"name": "REM-Schlafanteil"},
+      "time_in_bed": {"name": "Zeit im Bett"},
+      "bedtime_start": {"name": "Schlafenszeitbeginn"},
+      "bedtime_end": {"name": "Schlafenszeitende"},
+      "readiness_score": {"name": "Bereitschaftswert"},
+      "temperature_deviation": {"name": "Temperaturabweichung"},
+      "resting_heart_rate": {"name": "Ruheherzfrequenzwert"},
+      "hrv_balance": {"name": "HRV-Balancewert"},
+      "activity_score": {"name": "Aktivitätswert"},
+      "steps": {"name": "Schritte"},
+      "active_calories": {"name": "Aktive Kalorien"},
+      "total_calories": {"name": "Gesamtkalorien"},
+      "target_calories": {"name": "Zielkalorien"},
+      "met_min_high": {"name": "Hohe Aktivitätszeit"},
+      "met_min_medium": {"name": "Mittlere Aktivitätszeit"},
+      "met_min_low": {"name": "Niedrige Aktivitätszeit"},
+      "current_heart_rate": {"name": "Aktuelle Herzfrequenz"},
+      "average_heart_rate": {"name": "Durchschnittliche Herzfrequenz"},
+      "min_heart_rate": {"name": "Minimale Herzfrequenz"},
+      "max_heart_rate": {"name": "Maximale Herzfrequenz"},
+      "average_sleep_hrv": {"name": "Durchschnittliche Schlaf-HRV"},
+      "lowest_sleep_heart_rate": {"name": "Niedrigste Schlafherzfrequenz"},
+      "average_sleep_heart_rate": {"name": "Durchschnittliche Schlafherzfrequenz"},
+      "stress_high_duration": {"name": "Hohe Stressdauer"},
+      "recovery_high_duration": {"name": "Hohe Erholungsdauer"},
+      "stress_day_summary": {"name": "Stress-Tageszusammenfassung"},
+      "resilience_level": {"name": "Resilienzstufe"},
+      "sleep_recovery_score": {"name": "Schlaferholungswert"},
+      "daytime_recovery_score": {"name": "Tageserholungswert"},
+      "stress_resilience_score": {"name": "Stressresilienzwert"},
+      "spo2_average": {"name": "SpO2-Durchschnitt"},
+      "breathing_disturbance_index": {"name": "Atemstörungsindex"},
+      "vo2_max": {"name": "VO2 max"},
+      "cardiovascular_age": {"name": "Kardiovaskuläres Alter"},
+      "optimal_bedtime_start": {"name": "Optimaler Schlafzeitbeginn"},
+      "optimal_bedtime_end": {"name": "Optimales Schlafzeitende"},
+      "low_battery_alert": {"name": "Niedriger Akkustand-Warnung"}
+    }
+  }
+}
