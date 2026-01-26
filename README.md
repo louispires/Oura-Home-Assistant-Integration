@@ -442,7 +442,7 @@ graph_span: 7d
 span:
   end: day
 series:
-  - entity: sensor.oura_ring_resting_heart_rate
+  - entity: sensor.oura_ring_resting_heart_rate_score
     name: Resting HR
     color: "#E91E63"
     stroke_width: 2
@@ -452,7 +452,7 @@ series:
       func: last
       duration: 1d
     yaxis_id: hr
-  - entity: sensor.oura_ring_hrv_balance
+  - entity: sensor.oura_ring_hrv_balance_score
     name: HRV Balance
     color: "#00BCD4"
     stroke_width: 2
