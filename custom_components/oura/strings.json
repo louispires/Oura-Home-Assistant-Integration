@@ -61,6 +61,7 @@
       "temperature_deviation": {"name": "Temperature deviation"},
       "resting_heart_rate": {"name": "Resting heart rate score"},
       "hrv_balance": {"name": "HRV balance score"},
+      "sleep_regularity": {"name": "Sleep regularity score"},
       "activity_score": {"name": "Activity score"},
       "steps": {"name": "Steps"},
       "active_calories": {"name": "Active calories"},

@@ -61,6 +61,7 @@
       "temperature_deviation": {"name": "Temperaturabweichung"},
       "resting_heart_rate": {"name": "Ruheherzfrequenzwert"},
       "hrv_balance": {"name": "HRV-Balancewert"},
+      "sleep_regularity": {"name": "Schlafregelmäßigkeitswert"},
       "activity_score": {"name": "Aktivitätswert"},
       "steps": {"name": "Schritte"},
       "active_calories": {"name": "Aktive Kalorien"},

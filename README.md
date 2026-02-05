@@ -10,14 +10,14 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 ## Features
 
 - **OAuth2 Authentication**: Secure authentication using Home Assistant's application credentials
-- **Comprehensive Data**: 46 sensors covering all Oura Ring metrics including sleep, readiness, activity, stress, resilience, and more
+- **Comprehensive Data**: 49 sensors covering all Oura Ring metrics including sleep, readiness, activity, stress, resilience, and more
 - **HA 2025.11 Compliant**: Modern entity naming, translation keys, entity categories, and proper state classes
 - **Historical Data Loading**: Automatically loads 3 months of historical data on first setup (configurable 1-48 months, up to 4 years)
 - **Entity Categories**: Diagnostic sensors properly categorized for better UI organization
 - **Multi-Account Support**: Entry-scoped unique IDs allow multiple Oura accounts
 - **HACS Compatible**: Easy installation and updates via HACS
 - **Modern Architecture**: Configuration-driven design following latest Home Assistant standards
-- **Comprehensive Testing**: 45 automated tests ensuring reliability
+- **Comprehensive Testing**: 50 automated tests ensuring reliability
 - **Efficient Updates**: Uses DataUpdateCoordinator with specialized processing methods
 
 ## Available Sensors
@@ -40,11 +40,12 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Bedtime End (when you woke up)
 - Low Battery Alert
 
-### Readiness Sensors (4)
+### Readiness Sensors (5)
 - Readiness Score
 - Temperature Deviation
 - Resting Heart Rate Score (contribution score, not actual BPM)*
 - HRV Balance Score (contribution score, not actual HRV)*
+- Sleep Regularity Score (contribution score for sleep schedule consistency)*
 
 **Note**: Sensors marked with * may be unavailable if Oura doesn't have sufficient data to calculate the contributor score.
 
@@ -92,7 +93,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Optimal Bedtime Start ⚠️
 - Optimal Bedtime End ⚠️
 
-**Total: 48 sensors**
+**Total: 49 sensors**
 
 **Important Notes**:
 - Sensors marked with ⚠️ may be **unavailable** for new Oura Ring users (typically the first few weeks of usage). The Oura API does not provide data for these sensors until sufficient baseline data has been collected. This is normal behavior and they may become available over time as you continue using your ring.

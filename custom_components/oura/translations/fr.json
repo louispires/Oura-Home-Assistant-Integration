@@ -61,6 +61,7 @@
       "temperature_deviation": {"name": "Écart de température"},
       "resting_heart_rate": {"name": "Score de fréquence cardiaque au repos"},
       "hrv_balance": {"name": "Score d'équilibre VFC"},
+      "sleep_regularity": {"name": "Score de régularité du sommeil"},
       "activity_score": {"name": "Score d'activité"},
       "steps": {"name": "Pas"},
       "active_calories": {"name": "Calories actives"},

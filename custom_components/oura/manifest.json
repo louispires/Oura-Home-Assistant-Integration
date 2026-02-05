@@ -9,5 +9,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/louispires/oura-v2-custom-component/issues",
   "requirements": [],
-  "version": "2.5.1-BETA.1"
+  "version": "2.5.1"
 }

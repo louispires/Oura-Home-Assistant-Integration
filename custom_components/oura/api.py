@@ -40,11 +40,9 @@ class OuraApiClient:
         Args:
             days_back: Number of days of historical data to fetch (default: 1)
         """
-        _LOGGER.debug("async_get_data called with days_back=%d", days_back)
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=days_back)
-        _LOGGER.debug("Requesting data from %s to %s", start_date, end_date)
-        
+
         sleep_data, readiness_data, activity_data, heartrate_data, sleep_detail_data, stress_data, resilience_data, spo2_data, vo2_max_data, cardiovascular_age_data, sleep_time_data = await asyncio.gather(
             self._async_get_sleep(start_date, end_date),
             self._async_get_readiness(start_date, end_date),
@@ -64,14 +62,7 @@ class OuraApiClient:
         # Count how many endpoints failed to determine if this is a systemic issue
         failed_endpoints = 0
         total_endpoints = 11
-        
-        # Debug: Log token state after API calls
-        _LOGGER.debug(
-            "API calls completed. Token valid: %s, Token exists: %s",
-            self.session.valid_token,
-            self.session.token is not None
-        )
-        
+
         if isinstance(sleep_data, Exception):
             failed_endpoints += 1
         if isinstance(readiness_data, Exception):
@@ -320,19 +311,9 @@ class OuraApiClient:
     async def _async_get(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make GET request to Oura API."""
         try:
-            # Debug logging for token state before request
-            _LOGGER.debug(
-                "_async_get starting for URL: %s. Token valid: %s, Token exists: %s",
-                url,
-                self.session.valid_token,
-                self.session.token is not None
-            )
-            
             # Ensure token is valid and get the token data
-            _LOGGER.debug("Calling async_ensure_token_valid()")
             await self.session.async_ensure_token_valid()
-            _LOGGER.debug("Token validation completed. Valid: %s", self.session.valid_token)
-            
+
             # Access the token directly from the session
             if not self.session.valid_token or not self.session.token:
                 _LOGGER.error(
@@ -341,50 +322,33 @@ class OuraApiClient:
                     self.session.token is not None
                 )
                 raise ValueError("Failed to get valid OAuth token")
-            
+
             token = self.session.token
-            _LOGGER.debug("Token obtained. Type: %s, Keys: %s", type(token), list(token.keys()) if isinstance(token, dict) else "N/A")
-            
+
             if 'access_token' not in token:
                 _LOGGER.error("Token missing access_token. Token keys: %s", list(token.keys()))
                 raise ValueError("OAuth token missing access_token")
-            
-            access_token = token['access_token']
-            token_type = type(access_token).__name__
-            token_len = len(str(access_token)) if access_token else 0
-            _LOGGER.debug("Access token found. Type: %s, Length: %d", token_type, token_len)
-            
+
             headers = {
-                "Authorization": f"Bearer {access_token}",
+                "Authorization": f"Bearer {token['access_token']}",
             }
-            _LOGGER.debug("Making HTTP GET request to: %s with params: %s", url, params)
-            
+
             async with self.client_session.get(url, headers=headers, params=params) as response:
-                _LOGGER.debug("HTTP response received. Status: %d", response.status)
                 response.raise_for_status()
-                response_data = await response.json()
-                _LOGGER.debug("Successfully parsed JSON response from %s", url)
-                return response_data
+                return await response.json()
         except ClientResponseError as err:
-            error_msg = f"HTTP {err.status}: {err.message}" if hasattr(err, 'message') else str(err)
             if err.status != 401:  # 401 handled gracefully by callers for optional features
-                _LOGGER.error("ClientResponseError fetching data from %s: %s", url, error_msg)
-            else:
-                _LOGGER.debug("Got 401 Unauthorized from %s (expected for optional features): %s", url, error_msg)
+                _LOGGER.error("Error fetching data from %s: %s", url, err)
             raise
         except (TypeError, KeyError) as err:
             # Handle token validation failures
-            _LOGGER.error(
-                "Token error fetching data from %s (TypeError/KeyError): %s. Session valid: %s, Token: %s",
-                url, err, self.session.valid_token, self.session.token is not None
-            )
+            _LOGGER.error("Token error fetching data from %s: %s", url, err)
             raise
         except Exception as err:
             # Use warning for connection errors, error for other issues
-            error_str = str(err)
-            log_msg = "Unexpected error fetching data from %s: %s (Type: %s)"
-            if "Cannot connect" in error_str or "Domain name not found" in error_str or "Timeout" in error_str:
-                _LOGGER.warning(log_msg, url, err, type(err).__name__)
+            log_msg = "Unexpected error fetching data from %s: %s"
+            if "Cannot connect" in str(err) or "Domain name not found" in str(err) or "Timeout" in str(err):
+                _LOGGER.warning(log_msg, url, err)
             else:
-                _LOGGER.error(log_msg, url, err, type(err).__name__)
+                _LOGGER.error(log_msg, url, err)
             raise
