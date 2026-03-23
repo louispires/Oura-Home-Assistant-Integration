@@ -60,13 +60,13 @@ STATISTICS_METADATA = {
     "sleep_efficiency": {"name": "Sleep Efficiency", "unit": "%", "has_mean": True, "has_sum": False},
     "restfulness": {"name": "Restfulness", "unit": "%", "has_mean": True, "has_sum": False},
     "sleep_timing": {"name": "Sleep Timing", "unit": None, "has_mean": True, "has_sum": False},
-    "total_sleep_duration": {"name": "Total Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": True, "has_sum": False},
-    "deep_sleep_duration": {"name": "Deep Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": True, "has_sum": False},
-    "rem_sleep_duration": {"name": "REM Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": True, "has_sum": False},
-    "light_sleep_duration": {"name": "Light Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": True, "has_sum": False},
-    "awake_time": {"name": "Awake Time", "unit": UnitOfTime.HOURS, "has_mean": True, "has_sum": False},
+    "total_sleep_duration": {"name": "Total Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
+    "deep_sleep_duration": {"name": "Deep Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
+    "rem_sleep_duration": {"name": "REM Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
+    "light_sleep_duration": {"name": "Light Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
+    "awake_time": {"name": "Awake Time", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
     "sleep_latency": {"name": "Sleep Latency", "unit": UnitOfTime.MINUTES, "has_mean": True, "has_sum": False},
-    "time_in_bed": {"name": "Time in Bed", "unit": UnitOfTime.HOURS, "has_mean": True, "has_sum": False},
+    "time_in_bed": {"name": "Time in Bed", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
     "bedtime_start": {"name": "Bedtime Start", "unit": None, "has_mean": False, "has_sum": False},
     "bedtime_end": {"name": "Bedtime End", "unit": None, "has_mean": False, "has_sum": False},
     "deep_sleep_percentage": {"name": "Deep Sleep Percentage", "unit": "%", "has_mean": True, "has_sum": False},
@@ -89,8 +89,8 @@ STATISTICS_METADATA = {
     "average_heart_rate": {"name": "Average Heart Rate", "unit": "bpm", "has_mean": True, "has_sum": False},
     "min_heart_rate": {"name": "Minimum Heart Rate", "unit": "bpm", "has_mean": True, "has_sum": False},
     "max_heart_rate": {"name": "Maximum Heart Rate", "unit": "bpm", "has_mean": True, "has_sum": False},
-    "stress_high_duration": {"name": "Stress High Duration", "unit": UnitOfTime.MINUTES, "has_mean": True, "has_sum": False},
-    "recovery_high_duration": {"name": "Recovery High Duration", "unit": UnitOfTime.MINUTES, "has_mean": True, "has_sum": False},
+    "stress_high_duration": {"name": "Stress High Duration", "unit": UnitOfTime.MINUTES, "has_mean": False, "has_sum": True},
+    "recovery_high_duration": {"name": "Recovery High Duration", "unit": UnitOfTime.MINUTES, "has_mean": False, "has_sum": True},
     "stress_day_summary": {"name": "Stress Day Summary", "unit": None, "has_mean": False, "has_sum": False},
     "resilience_level": {"name": "Resilience Level", "unit": None, "has_mean": False, "has_sum": False},
     "sleep_recovery_score": {"name": "Sleep Recovery Score", "unit": None, "has_mean": True, "has_sum": False},
@@ -431,11 +431,17 @@ async def _create_statistic(
 
     # Create data points
     statistics = []
-    for point in data_points:
+    sorted_data_points = sorted(data_points, key=lambda point: point["timestamp"])
+    running_sum = 0.0
+    for point in sorted_data_points:
+        value = point["value"]
+        if metadata["has_sum"]:
+            running_sum += value
         stat_data = StatisticData(
             start=point["timestamp"],
-            mean=point["value"] if metadata["has_mean"] else None,
-            sum=point["value"] if metadata["has_sum"] else None,
+            state=value if metadata["has_sum"] else None,
+            mean=value if metadata["has_mean"] else None,
+            sum=running_sum if metadata["has_sum"] else None,
         )
         statistics.append(stat_data)
 

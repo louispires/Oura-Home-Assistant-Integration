@@ -8,6 +8,7 @@ from custom_components.oura.statistics import (
     async_import_statistics,
     STATISTICS_METADATA,
     DATA_SOURCE_CONFIG,
+    _create_statistic,
     _parse_date_to_timestamp,
     _apply_transformation,
     _compute_percentage,
@@ -144,4 +145,83 @@ def test_get_nested_value():
     assert _get_nested_value(data, "contributors.missing") is None
     assert _get_nested_value(data, "missing.nested") is None
 
+
+def test_statistics_metadata_state_class_alignment():
+    """Test that total/total_increasing sensors use sum statistics."""
+    sum_sensors = [
+        "total_sleep_duration",
+        "deep_sleep_duration",
+        "rem_sleep_duration",
+        "light_sleep_duration",
+        "awake_time",
+        "time_in_bed",
+        "steps",
+        "active_calories",
+        "total_calories",
+        "met_min_high",
+        "met_min_medium",
+        "met_min_low",
+        "stress_high_duration",
+        "recovery_high_duration",
+    ]
+    for sensor_key in sum_sensors:
+        assert STATISTICS_METADATA[sensor_key]["has_sum"] is True
+        assert STATISTICS_METADATA[sensor_key]["has_mean"] is False
+
+    mean_sensors = [
+        "sleep_score",
+        "sleep_efficiency",
+        "restfulness",
+        "sleep_timing",
+        "sleep_latency",
+        "deep_sleep_percentage",
+        "rem_sleep_percentage",
+        "readiness_score",
+        "temperature_deviation",
+        "resting_heart_rate",
+        "hrv_balance",
+        "activity_score",
+        "target_calories",
+        "average_sleep_hrv",
+        "lowest_sleep_heart_rate",
+        "average_sleep_heart_rate",
+        "average_heart_rate",
+        "min_heart_rate",
+        "max_heart_rate",
+        "spo2_average",
+        "breathing_disturbance_index",
+        "vo2_max",
+        "cardiovascular_age",
+        "sleep_recovery_score",
+        "daytime_recovery_score",
+        "stress_resilience_score",
+    ]
+    for sensor_key in mean_sensors:
+        assert STATISTICS_METADATA[sensor_key]["has_mean"] is True
+        assert STATISTICS_METADATA[sensor_key]["has_sum"] is False
+
+
+@pytest.mark.asyncio
+async def test_create_statistic_builds_cumulative_sum(mock_hass, mock_config_entry):
+    """Test that has_sum sensors use sorted data points with cumulative sum."""
+    data_points = [
+        {"timestamp": datetime(2024, 1, 3, 12, 0, 0, tzinfo=timezone.utc), "value": 300},
+        {"timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc), "value": 100},
+        {"timestamp": datetime(2024, 1, 2, 12, 0, 0, tzinfo=timezone.utc), "value": 200},
+    ]
+
+    with patch("custom_components.oura.statistics.er.async_get") as mock_er_get, \
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha:
+        mock_registry = MagicMock()
+        mock_er_get.return_value = mock_registry
+        mock_registry.async_get_entity_id.return_value = "sensor.oura_ring_steps"
+
+        await _create_statistic(mock_hass, "steps", data_points, mock_config_entry)
+
+    assert mock_import_ha.call_count == 1
+    _, metadata, statistics = mock_import_ha.call_args.args
+    assert metadata["statistic_id"] == "sensor.oura_ring_steps"
+    assert [point.start.day for point in statistics] == [1, 2, 3]
+    assert [point.state for point in statistics] == [100, 200, 300]
+    assert [point.sum for point in statistics] == [100, 300, 600]
 
