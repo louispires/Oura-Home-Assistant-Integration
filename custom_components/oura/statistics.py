@@ -78,6 +78,7 @@ STATISTICS_METADATA = {
     "temperature_deviation": {"name": "Temperature Deviation", "unit": UnitOfTemperature.CELSIUS, "has_mean": True, "has_sum": False},
     "resting_heart_rate": {"name": "Resting Heart Rate Score", "unit": None, "has_mean": True, "has_sum": False},
     "hrv_balance": {"name": "HRV Balance Score", "unit": None, "has_mean": True, "has_sum": False},
+    "sleep_regularity": {"name": "Sleep Regularity Score", "unit": None, "has_mean": True, "has_sum": False},
     "activity_score": {"name": "Activity Score", "unit": None, "has_mean": True, "has_sum": False},
     "steps": {"name": "Steps", "unit": "steps", "has_mean": False, "has_sum": True},
     "active_calories": {"name": "Active Calories", "unit": UnitOfEnergy.KILO_CALORIE, "has_mean": False, "has_sum": True},
@@ -146,6 +147,7 @@ DATA_SOURCE_CONFIG = {
             {"sensor_key": "temperature_deviation", "api_path": "temperature_deviation"},
             {"sensor_key": "resting_heart_rate", "api_path": "contributors.resting_heart_rate"},
             {"sensor_key": "hrv_balance", "api_path": "contributors.hrv_balance"},
+            {"sensor_key": "sleep_regularity", "api_path": "contributors.sleep_regularity"},
         ],
     },
     "activity": {
@@ -191,15 +193,12 @@ DATA_SOURCE_CONFIG = {
     },
     "cardiovascular_age": {
         "mappings": [
-            {"sensor_key": "cardiovascular_age", "api_path": "age"},
+            {"sensor_key": "cardiovascular_age", "api_path": "vascular_age"},
         ],
     },
-    "sleep_time": {
-        "mappings": [
-            {"sensor_key": "optimal_bedtime_start", "api_path": "optimal_bedtime_start"},
-            {"sensor_key": "optimal_bedtime_end", "api_path": "optimal_bedtime_end"},
-        ],
-    },
+    # sleep_time (optimal_bedtime_start/end) intentionally excluded from backfill:
+    # API returns second-offsets-from-midnight + timezone, requiring complex transform
+    # that the generic processor can't handle. Live data handled by coordinator.
 }
 
 
