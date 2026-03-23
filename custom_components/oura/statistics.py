@@ -165,22 +165,22 @@ DATA_SOURCE_CONFIG = {
     },
     "stress": {
         "mappings": [
-            {"sensor_key": "stress_high_duration", "api_path": "stress_high_duration"},
-            {"sensor_key": "recovery_high_duration", "api_path": "recovery_high_duration"},
+            {"sensor_key": "stress_high_duration", "api_path": "stress_high", "transform": "seconds_to_minutes"},
+            {"sensor_key": "recovery_high_duration", "api_path": "recovery_high", "transform": "seconds_to_minutes"},
             {"sensor_key": "stress_day_summary", "api_path": "day_summary"},
         ],
     },
     "resilience": {
         "mappings": [
             {"sensor_key": "resilience_level", "api_path": "level"},
-            {"sensor_key": "sleep_recovery_score", "api_path": "sleep_recovery_score"},
-            {"sensor_key": "daytime_recovery_score", "api_path": "daytime_recovery_score"},
-            {"sensor_key": "stress_resilience_score", "api_path": "contributors.activity_score"},
+            {"sensor_key": "sleep_recovery_score", "api_path": "contributors.sleep_recovery"},
+            {"sensor_key": "daytime_recovery_score", "api_path": "contributors.daytime_recovery"},
+            {"sensor_key": "stress_resilience_score", "api_path": "contributors.stress"},
         ],
     },
     "spo2": {
         "mappings": [
-            {"sensor_key": "spo2_average", "api_path": "average"},
+            {"sensor_key": "spo2_average", "api_path": "spo2_percentage.average"},
             {"sensor_key": "breathing_disturbance_index", "api_path": "breathing_disturbance_index"},
         ],
     },
