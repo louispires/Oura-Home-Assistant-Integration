@@ -23,6 +23,13 @@ class MockCoordinator:
     _process_vo2_max = OuraDataUpdateCoordinator._process_vo2_max
     _process_cardiovascular_age = OuraDataUpdateCoordinator._process_cardiovascular_age
     _process_sleep_time = OuraDataUpdateCoordinator._process_sleep_time
+    _process_workout = OuraDataUpdateCoordinator._process_workout
+    _process_session = OuraDataUpdateCoordinator._process_session
+    _process_tag = OuraDataUpdateCoordinator._process_tag
+    _process_enhanced_tag = OuraDataUpdateCoordinator._process_enhanced_tag
+    _process_rest_mode = OuraDataUpdateCoordinator._process_rest_mode
+    _parse_api_day = staticmethod(OuraDataUpdateCoordinator._parse_api_day)
+    _parse_iso_datetime = staticmethod(OuraDataUpdateCoordinator._parse_iso_datetime)
 
 
 def test_process_sleep_scores():
@@ -46,7 +53,6 @@ def test_process_sleep_scores():
     coordinator._process_sleep_scores(data, processed)
 
     assert processed["sleep_score"] == 85
-    assert processed["sleep_efficiency"] == 90
     assert processed["restfulness"] == 80
     assert processed["sleep_timing"] == 75
 
@@ -59,6 +65,7 @@ def test_process_sleep_details_with_durations():
         "sleep_detail": {
             "data": [
                 {
+                    "efficiency": 92,
                     "total_sleep_duration": 28800,  # 8 hours in seconds
                     "deep_sleep_duration": 7200,    # 2 hours
                     "rem_sleep_duration": 7200,     # 2 hours
@@ -78,6 +85,7 @@ def test_process_sleep_details_with_durations():
     processed = {}
     coordinator._process_sleep_details(data, processed)
 
+    assert processed["sleep_efficiency"] == 92
     assert processed["total_sleep_duration"] == 8.0
     assert processed["deep_sleep_duration"] == 2.0
     assert processed["rem_sleep_duration"] == 2.0
@@ -353,6 +361,7 @@ def test_process_data_orchestration():
     coordinator = MockCoordinator()
     data = {
         "sleep": {"data": [{"score": 85, "contributors": {"efficiency": 90}}]},
+        "sleep_detail": {"data": [{"efficiency": 92}]},
         "activity": {"data": [{"score": 88, "steps": 12345}]},
         "readiness": {"data": [{"score": 82}]}
     }
@@ -361,7 +370,7 @@ def test_process_data_orchestration():
 
     # Verify orchestration calls all relevant processors
     assert processed["sleep_score"] == 85
-    assert processed["sleep_efficiency"] == 90
+    assert processed["sleep_efficiency"] == 92
     assert processed["activity_score"] == 88
     assert processed["steps"] == 12345
     assert processed["readiness_score"] == 82
@@ -380,4 +389,135 @@ def test_empty_data_handling():
 
     # Should return empty dict without errors
     assert isinstance(processed, dict)
-    assert len(processed) == 0
+    assert processed == {"rest_mode_active": False}
+
+
+def test_process_workout_data():
+    """Test processing of workout data."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
+    data = {
+        "workout": {
+            "data": [
+                {
+                    "day": today,
+                    "activity": "running",
+                    "distance": 5000,
+                    "calories": 320,
+                    "intensity": "moderate",
+                    "start_datetime": f"{today}T06:30:00+00:00",
+                    "end_datetime": f"{today}T07:00:00+00:00",
+                }
+            ]
+        }
+    }
+
+    processed = {}
+    coordinator._process_workout(data, processed)
+
+    assert processed["workouts_today"] == 1
+    assert processed["last_workout_type"] == "running"
+    assert processed["last_workout_distance"] == 5000
+    assert processed["last_workout_calories"] == 320
+    assert processed["last_workout_intensity"] == "moderate"
+    assert processed["last_workout_duration"] == 30
+
+
+def test_process_session_data():
+    """Test processing of current-day sessions."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
+    data = {
+        "session": {
+            "data": [
+                {
+                    "day": today,
+                    "type": "meditation",
+                    "start_datetime": f"{today}T20:00:00+00:00",
+                    "end_datetime": f"{today}T20:10:00+00:00",
+                },
+                {
+                    "day": today,
+                    "type": "breathing",
+                    "start_datetime": f"{today}T21:00:00+00:00",
+                    "end_datetime": f"{today}T21:05:00+00:00",
+                }
+            ]
+        }
+    }
+
+    processed = {}
+    coordinator._process_session(data, processed)
+
+    assert processed["mindfulness_sessions_today"] == 2
+    assert processed["meditation_duration_today"] == 15
+
+
+def test_process_tag_data():
+    """Test processing of current-day tags."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
+    data = {
+        "tag": {
+            "data": [
+                {"day": today, "tags": ["coffee", "travel", "coffee"]},
+            ]
+        },
+        "enhanced_tag": {
+            "data": [
+                {
+                    "day": today,
+                    "tag_type_code": "coffee",
+                    "start_time": f"{today}T08:00:00+00:00",
+                    "end_time": f"{today}T08:15:00+00:00",
+                    "comment": "Morning coffee",
+                }
+            ]
+        },
+    }
+
+    processed = {}
+    coordinator._process_tag(data, processed)
+    coordinator._process_enhanced_tag(data, processed)
+
+    assert processed["tags_today"] == "coffee, travel"
+    assert processed["tag_count_today"] == 2
+    assert processed["_tags_today_list"] == ["coffee", "travel"]
+    assert processed["_enhanced_tags_today"][0]["comment"] == "Morning coffee"
+
+
+def test_process_rest_mode_data():
+    """Test processing of active rest mode period."""
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import patch
+    from homeassistant.util import dt as dt_util
+
+    coordinator = MockCoordinator()
+    now = datetime.now(timezone.utc)
+    data = {
+        "rest_mode": {
+            "data": [
+                {
+                    "id": "rest-mode-1",
+                    "start_day": now.date().isoformat(),
+                    "end_day": (now.date() + timedelta(days=1)).isoformat(),
+                    "start_time": (now - timedelta(hours=1)).isoformat(),
+                    "end_time": (now + timedelta(hours=1)).isoformat(),
+                }
+            ]
+        }
+    }
+
+    processed = {}
+    with patch.object(dt_util, "now", return_value=now):
+        coordinator._process_rest_mode(data, processed)
+
+    assert processed["rest_mode_active"] is True
+    assert processed["rest_mode_start"] == now - timedelta(hours=1)
+    assert processed["rest_mode_end"] == now + timedelta(hours=1)

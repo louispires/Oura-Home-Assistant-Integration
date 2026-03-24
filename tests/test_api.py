@@ -38,6 +38,11 @@ async def test_async_get_data_uses_local_date_and_exclusive_end_date():
         "_async_get_vo2_max",
         "_async_get_cardiovascular_age",
         "_async_get_sleep_time",
+        "_async_get_workout",
+        "_async_get_session",
+        "_async_get_tag",
+        "_async_get_enhanced_tag",
+        "_async_get_rest_mode",
     ]
     for method_name in endpoint_methods:
         setattr(client, method_name, AsyncMock(return_value={"data": []}))

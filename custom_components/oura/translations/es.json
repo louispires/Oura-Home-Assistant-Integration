@@ -41,6 +41,9 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "rest_mode": {"name": "Modo de descanso"}
+    },
     "sensor": {
       "sleep_score": {"name": "Puntuación de sueño"},
       "total_sleep_duration": {"name": "Duración total del sueño"},
@@ -90,7 +93,19 @@
       "cardiovascular_age": {"name": "Edad cardiovascular"},
       "optimal_bedtime_start": {"name": "Inicio de hora óptima para dormir"},
       "optimal_bedtime_end": {"name": "Fin de hora óptima para dormir"},
-      "low_battery_alert": {"name": "Alerta de batería baja"}
+      "low_battery_alert": {"name": "Alerta de batería baja"},
+      "workouts_today": {"name": "Entrenamientos de hoy"},
+      "last_workout_type": {"name": "Tipo del último entrenamiento"},
+      "last_workout_distance": {"name": "Distancia del último entrenamiento"},
+      "last_workout_calories": {"name": "Calorías del último entrenamiento"},
+      "last_workout_intensity": {"name": "Intensidad del último entrenamiento"},
+      "last_workout_duration": {"name": "Duración del último entrenamiento"},
+      "mindfulness_sessions_today": {"name": "Sesiones de atención plena de hoy"},
+      "meditation_duration_today": {"name": "Duración de meditación de hoy"},
+      "tags_today": {"name": "Etiquetas de hoy"},
+      "tag_count_today": {"name": "Cantidad de etiquetas de hoy"},
+      "rest_mode_start": {"name": "Inicio del modo de descanso"},
+      "rest_mode_end": {"name": "Fin del modo de descanso"}
     }
   }
 }

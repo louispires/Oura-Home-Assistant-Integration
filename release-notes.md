@@ -1,4 +1,82 @@
-﻿# 🎉 Oura Ring v2 Integration v2.5.2 - Timezone & Historical Statistics Fixes
+﻿# 🎉 Oura Ring v2 Integration v2.6.0 - Workout, Session, Tags & Rest Mode
+
+This release introduces the first major post-v2.5.2 feature expansion with new workout/session tracking, tags and rest mode entities, and a sleep efficiency data correctness fix.
+
+## ✨ FEATURES IN v2.6.0
+
+### Sleep Efficiency Correctness Fix
+
+- **Correct source field**: `sleep_efficiency` now comes from detailed sleep data (`sleep_detail.efficiency`) instead of readiness/sleep contributor score fields.
+- **Live + historical consistency**: both coordinator processing and long-term statistics import now use the same value source.
+- **User impact**: Sleep Efficiency better matches Oura app percentage values.
+
+### New Workout Sensors
+
+- **New sensors (6)**:
+  - `workouts_today`
+  - `last_workout_type`
+  - `last_workout_distance`
+  - `last_workout_calories`
+  - `last_workout_intensity`
+  - `last_workout_duration`
+- **Data source**: Oura `workout` endpoint.
+- **Historical statistics**: added daily aggregate imports for workout count, distance, calories, and duration.
+
+### New Session Sensors
+
+- **New sensors (2)**:
+  - `mindfulness_sessions_today`
+  - `meditation_duration_today`
+- **Data source**: Oura `session` endpoint.
+- **Historical statistics**: added daily aggregate imports for mindfulness session count and meditation duration.
+
+### New Tag Sensors
+
+- **New sensors (2)**:
+  - `tags_today`
+  - `tag_count_today`
+- **Data sources**: Oura `tag` and `enhanced_tag` endpoints.
+- **Attributes**: bounded enriched tag metadata is exposed on `tags_today` for easier dashboard and automation use.
+- **Historical statistics**: added daily tag count from enhanced tag data.
+
+### New Rest Mode Entities
+
+- **New sensors (2)**:
+  - `rest_mode_start`
+  - `rest_mode_end`
+- **New binary sensor (1)**:
+  - `rest_mode`
+- **Data source**: Oura `rest_mode_period` endpoint.
+- **Behavior**: binary sensor reflects active rest mode state and exposes active period metadata attributes.
+- **Historical statistics**: added daily rest mode period count and duration imports.
+
+## 📊 ENTITY COUNT UPDATE
+
+- **Previous version**: 49 sensors
+- **This version**: 61 sensors + 1 binary sensor
+
+## 🔧 TECHNICAL IMPROVEMENTS
+
+- Extended API fan-out to include workout, session, tag, enhanced_tag, and rest_mode endpoints.
+- Added first binary sensor platform registration and setup for the integration.
+- Extended statistics metadata and processors for new daily aggregates.
+- Added translation keys for newly introduced entities, including non-English translation files.
+- Updated README and project summary docs to reflect the expanded entity set and corrected sleep efficiency behavior.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ Full Docker test suite passing in Home Assistant test environment.
+- ✅ 61 automated tests passing.
+- ✅ Added and updated tests for:
+  - sleep efficiency source alignment
+  - workout/session processing
+  - tags and enhanced tag processing
+  - rest mode state and binary sensor behavior
+  - expanded API endpoint coverage and fixtures
+
+---
+
+# 🎉 Oura Ring v2 Integration v2.5.2 - Timezone & Historical Statistics Fixes
 
 This release combines PR #45 and PR #47 into a single patch release focused on correct current-day data and reliable historical statistics backfill - Thank you @issmirnov
 

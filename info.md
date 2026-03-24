@@ -5,11 +5,12 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 ## Features
 
 ✅ **OAuth2 Authentication** - Secure authentication using Home Assistant's application credentials  
-✅ **Comprehensive Data** - 44 sensors covering all Oura Ring metrics including sleep, readiness, activity, stress, and more  
+✅ **Comprehensive Data** - 61 sensors and 1 binary sensor covering sleep, readiness, activity, workout, session, tag, rest mode, stress, resilience, and more  
 ✅ **Extended Historical Data** - Load up to 48 months (4 years) of historical data on first setup (default: 3 months)  
 ✅ **Configurable Updates** - Data refresh interval configurable from 1-60 minutes (default: 5 minutes)  
 ✅ **Modern Architecture** - Built following the latest Home Assistant standards  
 ✅ **Custom Branding** - Includes Oura Ring icon for visual identification
+✅ **Expanded Daily Tracking** - Adds workout, mindfulness session, tag, and rest mode entities with historical statistics support
 
 ## Quick Start
 
@@ -31,22 +32,21 @@ After installation:
 
 ## Available Sensors
 
-### Sleep (13 sensors)
-Sleep Score, Total/Deep/REM/Light Sleep Duration, Awake Time, Sleep Efficiency, Restfulness, Latency, Timing, Deep Sleep %, REM Sleep %, Time in Bed
+### Sleep and Recovery
+Sleep Score, Total/Deep/REM/Light Sleep Duration, Awake Time, Sleep Efficiency, Restfulness, Latency, Timing, Deep Sleep %, REM Sleep %, Time in Bed, Bedtime Start, Bedtime End, Low Battery Alert, Lowest Sleep Heart Rate, Average Sleep Heart Rate, Average Sleep HRV
 
-### Readiness (4 sensors)
-Readiness Score, Temperature Deviation, Resting Heart Rate, HRV Balance
+### Readiness and Activity
+Readiness Score, Temperature Deviation, Resting Heart Rate, HRV Balance, Sleep Regularity, Activity Score, Steps, Active/Total/Target Calories, High/Medium/Low Activity Time
 
-### Activity (8 sensors)
-Activity Score, Steps, Active/Total/Target Calories, High/Medium/Low Activity Time
+### Heart, Stress, and Advanced Metrics
+Current/Average/Minimum/Maximum Heart Rate, Stress High Duration, Recovery High Duration, Stress Day Summary, Resilience Level, Sleep Recovery Score, Daytime Recovery Score, Stress Resilience Score, SpO2 Average, Breathing Disturbance Index, VO2 Max, Cardiovascular Age, Optimal Bedtime Start, Optimal Bedtime End
 
-### Heart Rate (4 sensors)
-Current Heart Rate, Average Heart Rate, Minimum Heart Rate, Maximum Heart Rate
+### Workout, Session, Tags, and Rest Mode
+Workouts Today, Last Workout Type, Last Workout Distance, Last Workout Calories, Last Workout Intensity, Last Workout Duration, Mindfulness Sessions Today, Meditation Duration Today, Tags Today, Tag Count Today, Rest Mode Start, Rest Mode End, Rest Mode binary sensor
 
-### HRV (1 sensor)
-Average Sleep HRV
+**Total: 61 sensors + 1 binary sensor** providing comprehensive health tracking
 
-**Total: 30 sensors** providing comprehensive health tracking
+Sleep Efficiency is now sourced from Oura detailed sleep data so it reflects the actual percentage rather than the contributor score.
 
 ## Support
 

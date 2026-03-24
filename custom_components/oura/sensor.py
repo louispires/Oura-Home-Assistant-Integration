@@ -74,14 +74,28 @@ class OuraSensor(CoordinatorEntity[OuraDataUpdateCoordinator], SensorEntity):
         return self.coordinator.data.get(self._sensor_type)
 
     @property
-    def extra_state_attributes(self) -> dict[str, str] | None:
+    def extra_state_attributes(self) -> dict[str, object] | None:
         """Return extra state attributes.
         
         Includes the data_date to show which day's data is being displayed.
         """
-        if self.coordinator.data and "_data_date" in self.coordinator.data:
-            return {"data_date": self.coordinator.data["_data_date"]}
-        return None
+        if not self.coordinator.data:
+            return None
+
+        attrs: dict[str, object] = {}
+        if "_data_date" in self.coordinator.data:
+            attrs["data_date"] = self.coordinator.data["_data_date"]
+
+        if self._sensor_type == "tags_today":
+            if "_tags_today_list" in self.coordinator.data:
+                attrs["tags"] = self.coordinator.data["_tags_today_list"]
+            if "_enhanced_tags_today" in self.coordinator.data:
+                attrs["enhanced_tags"] = self.coordinator.data["_enhanced_tags_today"]
+
+        if self._sensor_type.startswith("last_workout_") and "_last_workout_raw" in self.coordinator.data:
+            attrs["workout"] = self.coordinator.data["_last_workout_raw"]
+
+        return attrs or None
 
     @property
     def available(self) -> bool:

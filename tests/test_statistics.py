@@ -1,11 +1,10 @@
 """Tests for Oura Ring statistics module."""
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from custom_components.oura.statistics import (
-    async_import_statistics,
     STATISTICS_METADATA,
     DATA_SOURCE_CONFIG,
     _create_statistic,
@@ -26,6 +25,9 @@ def test_statistics_metadata_completeness():
         "steps",
         "vo2_max",
         "cardiovascular_age",
+        "daily_workouts",
+        "daily_mindfulness_sessions",
+        "daily_tag_count",
     ]
     
     for sensor in required_sensors:
@@ -49,6 +51,15 @@ def test_data_source_config_structure():
                 assert "sensor_key" in mapping
                 assert "api_path" in mapping
                 assert mapping["sensor_key"] in STATISTICS_METADATA
+
+
+def test_sleep_efficiency_uses_sleep_detail_mapping():
+    """Test that sleep efficiency is mapped from detailed sleep data."""
+    sleep_mappings = DATA_SOURCE_CONFIG["sleep"]["mappings"]
+    sleep_detail_mappings = DATA_SOURCE_CONFIG["sleep_detail"]["mappings"]
+
+    assert all(mapping["sensor_key"] != "sleep_efficiency" for mapping in sleep_mappings)
+    assert {"sensor_key": "sleep_efficiency", "api_path": "efficiency"} in sleep_detail_mappings
 
 
 def test_timestamp_parsing():
@@ -163,6 +174,15 @@ def test_statistics_metadata_state_class_alignment():
         "met_min_low",
         "stress_high_duration",
         "recovery_high_duration",
+        "daily_workouts",
+        "daily_workout_distance",
+        "daily_workout_calories",
+        "daily_workout_duration",
+        "daily_mindfulness_sessions",
+        "daily_meditation_duration",
+        "daily_tag_count",
+        "daily_rest_mode_count",
+        "daily_rest_mode_duration",
     ]
     for sensor_key in sum_sensors:
         assert STATISTICS_METADATA[sensor_key]["has_sum"] is True

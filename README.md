@@ -10,9 +10,10 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 ## Features
 
 - **OAuth2 Authentication**: Secure authentication using Home Assistant's application credentials
-- **Comprehensive Data**: 49 sensors covering all Oura Ring metrics including sleep, readiness, activity, stress, resilience, and more
+- **Comprehensive Data**: 61 sensors and 1 binary sensor covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, and more
 - **HA 2025.11 Compliant**: Modern entity naming, translation keys, entity categories, and proper state classes
 - **Historical Data Loading**: Automatically loads 3 months of historical data on first setup (configurable 1-48 months, up to 4 years)
+- **Expanded Daily Tracking**: Adds workout, mindfulness session, tag, and rest mode tracking with historical statistics support
 - **Entity Categories**: Diagnostic sensors properly categorized for better UI organization
 - **Multi-Account Support**: Entry-scoped unique IDs allow multiple Oura accounts
 - **HACS Compatible**: Easy installation and updates via HACS
@@ -39,6 +40,8 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Bedtime Start (when you went to sleep)
 - Bedtime End (when you woke up)
 - Low Battery Alert
+
+**Note**: Sleep Efficiency now uses the actual detailed sleep efficiency percentage from Oura sleep data rather than the contributor score.
 
 ### Readiness Sensors (5)
 - Readiness Score
@@ -93,12 +96,36 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Optimal Bedtime Start ⚠️
 - Optimal Bedtime End ⚠️
 
-**Total: 49 sensors**
+### Workout Sensors (6)
+- Workouts Today
+- Last Workout Type
+- Last Workout Distance
+- Last Workout Calories
+- Last Workout Intensity
+- Last Workout Duration
+
+### Session Sensors (2)
+- Mindfulness Sessions Today
+- Meditation Duration Today
+
+### Tag Sensors (2)
+- Tags Today
+- Tag Count Today
+
+### Rest Mode Sensors (2)
+- Rest Mode Start
+- Rest Mode End
+
+### Binary Sensors (1)
+- Rest Mode
+
+**Total: 61 sensors + 1 binary sensor**
 
 **Important Notes**:
 - Sensors marked with ⚠️ may be **unavailable** for new Oura Ring users (typically the first few weeks of usage). The Oura API does not provide data for these sensors until sufficient baseline data has been collected. This is normal behavior and they may become available over time as you continue using your ring.
 - Some sensors marked with feature requirements may return 401 Unauthorized errors if your Oura account/ring doesn't have access to those features.
 - The integration will continue to work with all available sensors - unavailable sensors simply won't display values until Oura provides data for them.
+- Rest mode uses a dedicated binary sensor and exposes the active period metadata when Oura reports an active rest mode window.
 
 ## Installation
 
@@ -544,6 +571,155 @@ yaxis:
 ```
 </details>
 
+#### Workout Summary
+
+Track how many workouts you completed today plus details from your latest workout:
+<details>
+<summary>yaml</summary>
+
+```yaml
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Workout Summary
+  show_states: true
+graph_span: 7d
+span:
+  end: day
+series:
+  - entity: sensor.oura_ring_workouts_today
+    name: Workouts
+    color: "#1E88E5"
+    type: column
+    opacity: 0.75
+    group_by:
+      func: last
+      duration: 1d
+    yaxis_id: count
+  - entity: sensor.oura_ring_last_workout_duration
+    name: Last Duration
+    color: "#43A047"
+    type: line
+    curve: smooth
+    stroke_width: 2
+    group_by:
+      func: last
+      duration: 1d
+    yaxis_id: minutes
+  - entity: sensor.oura_ring_last_workout_calories
+    name: Last Calories
+    color: "#FB8C00"
+    type: line
+    curve: smooth
+    stroke_width: 2
+    group_by:
+      func: last
+      duration: 1d
+    yaxis_id: calories
+yaxis:
+  - id: count
+    min: 0
+    apex_config:
+      tickAmount: 4
+      title:
+        text: Workouts
+  - id: minutes
+    opposite: true
+    min: 0
+    apex_config:
+      tickAmount: 4
+      title:
+        text: Minutes
+  - id: calories
+    opposite: true
+    show: false
+```
+</details>
+
+#### Mindfulness and Tags
+
+Visualize mindfulness sessions, meditation time, and daily tags together:
+<details>
+<summary>yaml</summary>
+
+```yaml
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Mindfulness and Tags
+  show_states: true
+graph_span: 14d
+span:
+  end: day
+series:
+  - entity: sensor.oura_ring_mindfulness_sessions_today
+    name: Sessions
+    color: "#8E24AA"
+    type: column
+    opacity: 0.75
+    group_by:
+      func: last
+      duration: 1d
+    yaxis_id: sessions
+  - entity: sensor.oura_ring_meditation_duration_today
+    name: Meditation (min)
+    color: "#00897B"
+    type: line
+    curve: smooth
+    stroke_width: 2
+    group_by:
+      func: last
+      duration: 1d
+    yaxis_id: minutes
+  - entity: sensor.oura_ring_tag_count_today
+    name: Tags
+    color: "#F4511E"
+    type: line
+    curve: smooth
+    stroke_width: 2
+    group_by:
+      func: last
+      duration: 1d
+    yaxis_id: tags
+yaxis:
+  - id: sessions
+    min: 0
+    apex_config:
+      tickAmount: 4
+      title:
+        text: Sessions
+  - id: minutes
+    opposite: true
+    min: 0
+    apex_config:
+      tickAmount: 4
+      title:
+        text: Minutes
+  - id: tags
+    opposite: true
+    show: false
+```
+</details>
+
+#### Rest Mode Card
+
+Show current rest mode status with the active window from Oura:
+<details>
+<summary>yaml</summary>
+
+```yaml
+type: entities
+title: Rest Mode
+entities:
+  - entity: binary_sensor.oura_ring_rest_mode
+    name: Rest Mode Active
+  - entity: sensor.oura_ring_rest_mode_start
+    name: Rest Mode Start
+  - entity: sensor.oura_ring_rest_mode_end
+    name: Rest Mode End
+```
+</details>
+
 #### Temperature Deviation
 
 Track body temperature trends:
@@ -619,6 +795,18 @@ entities:
   - entity: sensor.oura_ring_active_calories
     secondary_info: last-changed
     name: Active Calories
+  - entity: sensor.oura_ring_workouts_today
+    secondary_info: last-changed
+    name: Workouts Today
+  - entity: sensor.oura_ring_mindfulness_sessions_today
+    secondary_info: last-changed
+    name: Mindfulness Sessions
+  - entity: sensor.oura_ring_tag_count_today
+    secondary_info: last-changed
+    name: Tags Today
+  - entity: binary_sensor.oura_ring_rest_mode
+    secondary_info: last-changed
+    name: Rest Mode
   - entity: sensor.oura_ring_current_heart_rate
     secondary_info: last-changed
   - entity: sensor.oura_ring_average_heart_rate

@@ -17,6 +17,25 @@ from .const import API_BASE_URL
 
 _LOGGER = logging.getLogger(__name__)
 
+API_ENDPOINTS: dict[str, str] = {
+    "sleep": "_async_get_sleep",
+    "readiness": "_async_get_readiness",
+    "activity": "_async_get_activity",
+    "heartrate": "_async_get_heartrate",
+    "sleep_detail": "_async_get_sleep_detail",
+    "stress": "_async_get_stress",
+    "resilience": "_async_get_resilience",
+    "spo2": "_async_get_spo2",
+    "vo2_max": "_async_get_vo2_max",
+    "cardiovascular_age": "_async_get_cardiovascular_age",
+    "sleep_time": "_async_get_sleep_time",
+    "workout": "_async_get_workout",
+    "session": "_async_get_session",
+    "tag": "_async_get_tag",
+    "enhanced_tag": "_async_get_enhanced_tag",
+    "rest_mode": "_async_get_rest_mode",
+}
+
 
 class OuraApiClient:
     """Oura API client."""
@@ -46,94 +65,31 @@ class OuraApiClient:
         end_date = today + timedelta(days=1)  # Oura API end_date is exclusive
         start_date = today - timedelta(days=days_back)
 
-        sleep_data, readiness_data, activity_data, heartrate_data, sleep_detail_data, stress_data, resilience_data, spo2_data, vo2_max_data, cardiovascular_age_data, sleep_time_data = await asyncio.gather(
-            self._async_get_sleep(start_date, end_date),
-            self._async_get_readiness(start_date, end_date),
-            self._async_get_activity(start_date, end_date),
-            self._async_get_heartrate(start_date, end_date),
-            self._async_get_sleep_detail(start_date, end_date),
-            self._async_get_stress(start_date, end_date),
-            self._async_get_resilience(start_date, end_date),
-            self._async_get_spo2(start_date, end_date),
-            self._async_get_vo2_max(start_date, end_date),
-            self._async_get_cardiovascular_age(start_date, end_date),
-            self._async_get_sleep_time(start_date, end_date),
+        results = await asyncio.gather(
+            *(getattr(self, method_name)(start_date, end_date) for method_name in API_ENDPOINTS.values()),
             return_exceptions=True,
         )
 
-        # Log any exceptions that occurred
-        # Count how many endpoints failed to determine if this is a systemic issue
+        data: dict[str, Any] = {}
         failed_endpoints = 0
-        total_endpoints = 11
+        total_endpoints = len(API_ENDPOINTS)
 
-        if isinstance(sleep_data, Exception):
-            failed_endpoints += 1
-        if isinstance(readiness_data, Exception):
-            failed_endpoints += 1
-        if isinstance(activity_data, Exception):
-            failed_endpoints += 1
-        if isinstance(heartrate_data, Exception):
-            failed_endpoints += 1
-        if isinstance(sleep_detail_data, Exception):
-            failed_endpoints += 1
-        if isinstance(stress_data, Exception):
-            failed_endpoints += 1
-        if isinstance(resilience_data, Exception):
-            failed_endpoints += 1
-        if isinstance(spo2_data, Exception):
-            failed_endpoints += 1
-        if isinstance(vo2_max_data, Exception):
-            failed_endpoints += 1
-        if isinstance(cardiovascular_age_data, Exception):
-            failed_endpoints += 1
-        if isinstance(sleep_time_data, Exception):
-            failed_endpoints += 1
-        
-        # If all or most endpoints failed, this is likely a network issue
-        if failed_endpoints >= total_endpoints * 0.5:  # 50% or more failed
+        for (key, _), result in zip(API_ENDPOINTS.items(), results):
+            if isinstance(result, Exception):
+                failed_endpoints += 1
+                _LOGGER.debug("Error fetching %s data: %s", key, result)
+                data[key] = {}
+            else:
+                data[key] = result
+
+        if failed_endpoints >= total_endpoints * 0.5:
             _LOGGER.warning(
                 "Network connectivity issue: %d/%d API endpoints failed. "
                 "Will retry on next update cycle.",
                 failed_endpoints, total_endpoints
             )
-        else:
-            # Log individual endpoint failures at debug level
-            if isinstance(sleep_data, Exception):
-                _LOGGER.debug("Error fetching sleep data: %s", sleep_data)
-            if isinstance(readiness_data, Exception):
-                _LOGGER.debug("Error fetching readiness data: %s", readiness_data)
-            if isinstance(activity_data, Exception):
-                _LOGGER.debug("Error fetching activity data: %s", activity_data)
-            if isinstance(heartrate_data, Exception):
-                _LOGGER.debug("Error fetching heart rate data: %s", heartrate_data)
-            if isinstance(sleep_detail_data, Exception):
-                _LOGGER.debug("Error fetching detailed sleep data: %s", sleep_detail_data)
-            if isinstance(stress_data, Exception):
-                _LOGGER.debug("Error fetching stress data: %s", stress_data)
-            if isinstance(resilience_data, Exception):
-                _LOGGER.debug("Error fetching resilience data: %s", resilience_data)
-            if isinstance(spo2_data, Exception):
-                _LOGGER.debug("Error fetching SpO2 data: %s", spo2_data)
-            if isinstance(vo2_max_data, Exception):
-                _LOGGER.debug("Error fetching VO2 Max data: %s", vo2_max_data)
-            if isinstance(cardiovascular_age_data, Exception):
-                _LOGGER.debug("Error fetching cardiovascular age data: %s", cardiovascular_age_data)
-            if isinstance(sleep_time_data, Exception):
-                _LOGGER.debug("Error fetching sleep time data: %s", sleep_time_data)
 
-        return {
-            "sleep": sleep_data if not isinstance(sleep_data, Exception) else {},
-            "readiness": readiness_data if not isinstance(readiness_data, Exception) else {},
-            "activity": activity_data if not isinstance(activity_data, Exception) else {},
-            "heartrate": heartrate_data if not isinstance(heartrate_data, Exception) else {},
-            "sleep_detail": sleep_detail_data if not isinstance(sleep_detail_data, Exception) else {},
-            "stress": stress_data if not isinstance(stress_data, Exception) else {},
-            "resilience": resilience_data if not isinstance(resilience_data, Exception) else {},
-            "spo2": spo2_data if not isinstance(spo2_data, Exception) else {},
-            "vo2_max": vo2_max_data if not isinstance(vo2_max_data, Exception) else {},
-            "cardiovascular_age": cardiovascular_age_data if not isinstance(cardiovascular_age_data, Exception) else {},
-            "sleep_time": sleep_time_data if not isinstance(sleep_time_data, Exception) else {},
-        }
+        return data
 
     async def _async_get_sleep(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
         """Get sleep data."""
@@ -310,6 +266,76 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         return await self._async_get(url, params)
+
+    async def _async_get_workout(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
+        """Get workout data."""
+        url = f"{API_BASE_URL}/workout"
+        params = {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+        }
+        try:
+            return await self._async_get(url, params)
+        except ClientResponseError as err:
+            if err.status == 401:
+                return {"data": []}
+            raise
+
+    async def _async_get_session(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
+        """Get session data."""
+        url = f"{API_BASE_URL}/session"
+        params = {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+        }
+        try:
+            return await self._async_get(url, params)
+        except ClientResponseError as err:
+            if err.status == 401:
+                return {"data": []}
+            raise
+
+    async def _async_get_tag(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
+        """Get tag data."""
+        url = f"{API_BASE_URL}/tag"
+        params = {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+        }
+        try:
+            return await self._async_get(url, params)
+        except ClientResponseError as err:
+            if err.status == 401:
+                return {"data": []}
+            raise
+
+    async def _async_get_enhanced_tag(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
+        """Get enhanced tag data."""
+        url = f"{API_BASE_URL}/enhanced_tag"
+        params = {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+        }
+        try:
+            return await self._async_get(url, params)
+        except ClientResponseError as err:
+            if err.status == 401:
+                return {"data": []}
+            raise
+
+    async def _async_get_rest_mode(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
+        """Get rest mode period data."""
+        url = f"{API_BASE_URL}/rest_mode_period"
+        params = {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+        }
+        try:
+            return await self._async_get(url, params)
+        except ClientResponseError as err:
+            if err.status == 401:
+                return {"data": []}
+            raise
 
     async def _async_get(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make GET request to Oura API."""
