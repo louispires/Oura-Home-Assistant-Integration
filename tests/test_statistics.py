@@ -221,7 +221,7 @@ async def test_create_statistic_builds_cumulative_sum(mock_hass, mock_config_ent
     assert mock_import_ha.call_count == 1
     _, metadata, statistics = mock_import_ha.call_args.args
     assert metadata["statistic_id"] == "sensor.oura_ring_steps"
-    assert [point.start.day for point in statistics] == [1, 2, 3]
-    assert [point.state for point in statistics] == [100, 200, 300]
-    assert [point.sum for point in statistics] == [100, 300, 600]
+    assert [point["start"].day for point in statistics] == [1, 2, 3]
+    assert [point["state"] for point in statistics] == [100, 200, 300]
+    assert [point["sum"] for point in statistics] == [100, 300, 600]
 
