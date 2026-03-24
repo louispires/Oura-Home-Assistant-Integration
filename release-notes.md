@@ -1,4 +1,40 @@
-﻿# 🎉 Oura Ring v2 Integration v2.5.1 - Data Verification & Sleep Regularity
+﻿# 🎉 Oura Ring v2 Integration v2.5.2 - Timezone & Historical Statistics Fixes
+
+This release combines PR #45 and PR #47 into a single patch release focused on correct current-day data and reliable historical statistics backfill - Thank you @issmirnov
+
+## 🐛 FIXES IN v2.5.2
+
+### Sensors now show today's data in the configured Home Assistant timezone
+
+- **Timezone-aware date window**: Daily fetches now use `hass.config.time_zone` instead of server-local UTC time
+- **Exclusive end_date fix**: API requests now include `today + 1 day` so Oura's exclusive `end_date` behavior does not drop the current day
+- **User impact**: Daily sensors no longer lag by one day on Home Assistant OS and other UTC-hosted installs
+
+### Historical statistics charts render correctly
+
+- **Metadata alignment**: Duration and cumulative sensors now publish `sum` statistics instead of `mean` when their entity `state_class` is `total` or `total_increasing`
+- **Cumulative totals**: Imported `StatisticData.sum` values are now emitted as running totals instead of isolated daily values
+- **User impact**: Home Assistant history and statistics charts can render these backfilled sensors correctly
+
+### Historical backfill uses corrected Oura API paths
+
+- **Resilience backfill**: Fixed `sleep_recovery_score`, `daytime_recovery_score`, and `stress_resilience_score` paths
+- **Stress backfill**: Fixed stress and recovery duration keys and converted them from seconds to minutes during import
+- **SpO2 backfill**: Fixed `spo2_average` to use the nested `spo2_percentage.average` field
+- **Readiness backfill**: Added `sleep_regularity` historical import support
+- **Cardiovascular Age**: Corrected the backfill field to use `vascular_age`
+- **Sleep Time backfill**: Removed broken `sleep_time` backfill from the generic importer because it requires a dedicated transform that live data already handles correctly
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 53 automated tests passing in the Home Assistant Docker test environment
+- ✅ Added timezone-aware date window coverage
+- ✅ Added statistics metadata alignment coverage
+- ✅ Added cumulative sum coverage for imported statistics
+
+---
+
+# 🎉 Oura Ring v2 Integration v2.5.1 - Data Verification & Sleep Regularity
 
 This release adds data verification attributes and a new Sleep Regularity sensor from the latest Oura API update.
 

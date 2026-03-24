@@ -5,6 +5,7 @@ import asyncio
 from datetime import datetime, timedelta
 import logging
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession, ClientResponseError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -40,8 +41,10 @@ class OuraApiClient:
         Args:
             days_back: Number of days of historical data to fetch (default: 1)
         """
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=days_back)
+        local_tz = ZoneInfo(self.hass.config.time_zone)
+        today = datetime.now(tz=local_tz).date()
+        end_date = today + timedelta(days=1)  # Oura API end_date is exclusive
+        start_date = today - timedelta(days=days_back)
 
         sleep_data, readiness_data, activity_data, heartrate_data, sleep_detail_data, stress_data, resilience_data, spo2_data, vo2_max_data, cardiovascular_age_data, sleep_time_data = await asyncio.gather(
             self._async_get_sleep(start_date, end_date),
