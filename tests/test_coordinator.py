@@ -10,7 +10,10 @@ from oura.coordinator import OuraDataUpdateCoordinator
 class MockCoordinator:
     """Mock coordinator for testing data processing methods without HA framework."""
 
+    data = None  # Simulates coordinator.data for carry-forward logic
+
     # Copy all the processing methods from the real coordinator
+    _LAST_WORKOUT_KEYS = OuraDataUpdateCoordinator._LAST_WORKOUT_KEYS
     _process_data = OuraDataUpdateCoordinator._process_data
     _process_sleep_scores = OuraDataUpdateCoordinator._process_sleep_scores
     _process_sleep_details = OuraDataUpdateCoordinator._process_sleep_details
@@ -387,9 +390,9 @@ def test_empty_data_handling():
 
     processed = coordinator._process_data(data)
 
-    # Should return empty dict without errors
+    # Should return dict with default values without errors
     assert isinstance(processed, dict)
-    assert processed == {"rest_mode_active": False}
+    assert processed == {"rest_mode_active": False, "workouts_today": 0}
 
 
 def test_process_workout_data():
@@ -423,6 +426,91 @@ def test_process_workout_data():
     assert processed["last_workout_calories"] == 320
     assert processed["last_workout_intensity"] == "moderate"
     assert processed["last_workout_duration"] == 30
+
+
+def test_process_workout_preserves_last_values():
+    """Test that last_workout_* values are preserved when no new workout data exists."""
+    coordinator = MockCoordinator()
+    # Simulate previous coordinator data with workout values
+    coordinator.data = {
+        "last_workout_type": "cycling",
+        "last_workout_distance": 10000,
+        "last_workout_calories": 500,
+        "last_workout_intensity": "hard",
+        "last_workout_duration": 45,
+        "_last_workout_raw": {"activity": "cycling"},
+    }
+
+    # Empty workout response (no workouts in API window)
+    data = {"workout": {"data": []}}
+    processed = {}
+    coordinator._process_workout(data, processed)
+
+    assert processed["workouts_today"] == 0
+    assert processed["last_workout_type"] == "cycling"
+    assert processed["last_workout_distance"] == 10000
+    assert processed["last_workout_calories"] == 500
+    assert processed["last_workout_intensity"] == "hard"
+    assert processed["last_workout_duration"] == 45
+    assert processed["_last_workout_raw"] == {"activity": "cycling"}
+
+
+def test_process_workout_no_previous_data():
+    """Test that empty workout with no previous data doesn't crash."""
+    coordinator = MockCoordinator()
+    coordinator.data = None  # First run, no previous data
+
+    data = {"workout": {"data": []}}
+    processed = {}
+    coordinator._process_workout(data, processed)
+
+    assert processed["workouts_today"] == 0
+    assert "last_workout_type" not in processed
+    assert "last_workout_distance" not in processed
+    assert "last_workout_calories" not in processed
+    assert "last_workout_intensity" not in processed
+    assert "last_workout_duration" not in processed
+
+
+def test_process_workout_new_replaces_old():
+    """Test that new workout data replaces previously carried-forward values."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    # Old carried-forward data
+    coordinator.data = {
+        "last_workout_type": "cycling",
+        "last_workout_distance": 10000,
+        "last_workout_calories": 500,
+        "last_workout_intensity": "hard",
+        "last_workout_duration": 45,
+    }
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    data = {
+        "workout": {
+            "data": [
+                {
+                    "day": today,
+                    "activity": "running",
+                    "distance": 3000,
+                    "calories": 200,
+                    "intensity": "easy",
+                    "start_datetime": f"{today}T08:00:00+00:00",
+                    "end_datetime": f"{today}T08:20:00+00:00",
+                }
+            ]
+        }
+    }
+
+    processed = {}
+    coordinator._process_workout(data, processed)
+
+    assert processed["last_workout_type"] == "running"
+    assert processed["last_workout_distance"] == 3000
+    assert processed["last_workout_calories"] == 200
+    assert processed["last_workout_intensity"] == "easy"
+    assert processed["last_workout_duration"] == 20
 
 
 def test_process_session_data():

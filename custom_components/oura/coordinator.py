@@ -391,6 +391,15 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         except Exception as e:
                             _LOGGER.warning("Error calculating sleep time: %s", e)
 
+    _LAST_WORKOUT_KEYS = (
+        "last_workout_type",
+        "last_workout_distance",
+        "last_workout_calories",
+        "last_workout_intensity",
+        "last_workout_duration",
+        "_last_workout_raw",
+    )
+
     def _process_workout(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process workout summaries for current-day entities."""
         if workout_data := data.get("workout", {}).get("data"):
@@ -417,6 +426,14 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     processed["last_workout_duration"] = (end_dt - start_dt).total_seconds() / 60
 
                 processed["_last_workout_raw"] = latest_workout
+                return
+
+        # No workout data in current API window — carry forward previous values
+        processed["workouts_today"] = 0
+        if self.data:
+            for key in self._LAST_WORKOUT_KEYS:
+                if key in self.data:
+                    processed[key] = self.data[key]
 
     def _process_session(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process current-day mindfulness session summaries."""
