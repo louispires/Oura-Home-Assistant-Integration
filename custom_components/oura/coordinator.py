@@ -145,7 +145,7 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Process detailed sleep data (actual durations and HRV)."""
         if sleep_detail_data := data.get("sleep_detail", {}).get("data"):
             if sleep_detail_data and len(sleep_detail_data) > 0:
-                latest_sleep_detail = sleep_detail_data[-1]
+                latest_sleep_detail = self._select_primary_sleep(sleep_detail_data)
 
                 # Extract duration values
                 total_sleep_seconds = latest_sleep_detail.get("total_sleep_duration")
@@ -357,3 +357,25 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             processed["optimal_bedtime_end"] = end_dt
                         except Exception as e:
                             _LOGGER.warning("Error calculating sleep time: %s", e)
+
+    @staticmethod
+    def _select_primary_sleep(sleep_records: list[dict[str, Any]]) -> dict[str, Any]:
+        """Select the primary sleep record, preferring long_sleep over naps.
+
+        The Oura /sleep endpoint returns all sleep periods including naps
+        (type: sleep, late_nap) and rejected detections (type: rest, deleted).
+        We prefer 'long_sleep' to avoid naps overwriting bedtime_start/end.
+        Falls back to the latest non-deleted/non-rest record, then last record.
+        """
+        # Prefer long_sleep records (primary overnight sleep)
+        long_sleeps = [r for r in sleep_records if r.get("type") == "long_sleep"]
+        if long_sleeps:
+            return long_sleeps[-1]
+
+        # Fall back to any record that isn't deleted or falsely detected rest
+        valid = [r for r in sleep_records if r.get("type") not in ("deleted", "rest")]
+        if valid:
+            return valid[-1]
+
+        # Last resort: use whatever is there
+        return sleep_records[-1]

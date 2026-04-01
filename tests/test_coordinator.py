@@ -23,6 +23,7 @@ class MockCoordinator:
     _process_vo2_max = OuraDataUpdateCoordinator._process_vo2_max
     _process_cardiovascular_age = OuraDataUpdateCoordinator._process_cardiovascular_age
     _process_sleep_time = OuraDataUpdateCoordinator._process_sleep_time
+    _select_primary_sleep = staticmethod(OuraDataUpdateCoordinator._select_primary_sleep)
 
 
 def test_process_sleep_scores():
@@ -365,6 +366,120 @@ def test_process_data_orchestration():
     assert processed["activity_score"] == 88
     assert processed["steps"] == 12345
     assert processed["readiness_score"] == 82
+
+
+def test_select_primary_sleep_prefers_long_sleep():
+    """Test that long_sleep is preferred over naps for bedtime data."""
+    from datetime import datetime, timezone
+    coordinator = MockCoordinator()
+
+    # Simulate: long_sleep at night, then a nap later in the day
+    data = {
+        "sleep_detail": {
+            "data": [
+                {
+                    "type": "long_sleep",
+                    "bedtime_start": "2024-01-15T23:00:00+00:00",
+                    "bedtime_end": "2024-01-16T07:00:00+00:00",
+                    "total_sleep_duration": 28800,
+                    "deep_sleep_duration": 7200,
+                    "rem_sleep_duration": 7200,
+                    "light_sleep_duration": 14400,
+                    "low_battery_alert": False,
+                },
+                {
+                    "type": "sleep",
+                    "bedtime_start": "2024-01-16T13:30:00+00:00",
+                    "bedtime_end": "2024-01-16T14:00:00+00:00",
+                    "total_sleep_duration": 1800,
+                    "deep_sleep_duration": 0,
+                    "rem_sleep_duration": 900,
+                    "light_sleep_duration": 900,
+                    "low_battery_alert": False,
+                },
+            ]
+        }
+    }
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    # Should use the long_sleep record, not the nap
+    assert processed["bedtime_start"] == datetime(2024, 1, 15, 23, 0, 0, tzinfo=timezone.utc)
+    assert processed["bedtime_end"] == datetime(2024, 1, 16, 7, 0, 0, tzinfo=timezone.utc)
+    assert processed["total_sleep_duration"] == 8.0
+
+
+def test_select_primary_sleep_skips_deleted_and_rest():
+    """Test that deleted and rest (rejected) records are skipped."""
+    coordinator = MockCoordinator()
+
+    data = {
+        "sleep_detail": {
+            "data": [
+                {
+                    "type": "rest",
+                    "bedtime_start": "2024-01-16T12:00:00+00:00",
+                    "bedtime_end": "2024-01-16T12:30:00+00:00",
+                    "total_sleep_duration": 1800,
+                    "low_battery_alert": False,
+                },
+                {
+                    "type": "sleep",
+                    "bedtime_start": "2024-01-16T14:00:00+00:00",
+                    "bedtime_end": "2024-01-16T14:30:00+00:00",
+                    "total_sleep_duration": 1800,
+                    "low_battery_alert": False,
+                },
+                {
+                    "type": "deleted",
+                    "bedtime_start": "2024-01-16T16:00:00+00:00",
+                    "bedtime_end": "2024-01-16T16:30:00+00:00",
+                    "total_sleep_duration": 1800,
+                    "low_battery_alert": False,
+                },
+            ]
+        }
+    }
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    # Should pick the 'sleep' type, skipping 'rest' and 'deleted'
+    from datetime import datetime, timezone
+    assert processed["bedtime_start"] == datetime(2024, 1, 16, 14, 0, 0, tzinfo=timezone.utc)
+    assert processed["bedtime_end"] == datetime(2024, 1, 16, 14, 30, 0, tzinfo=timezone.utc)
+
+
+def test_select_primary_sleep_fallback_no_type():
+    """Test fallback when records have no type field (legacy data)."""
+    coordinator = MockCoordinator()
+
+    data = {
+        "sleep_detail": {
+            "data": [
+                {
+                    "bedtime_start": "2024-01-15T23:00:00+00:00",
+                    "bedtime_end": "2024-01-16T07:00:00+00:00",
+                    "total_sleep_duration": 28800,
+                    "low_battery_alert": False,
+                },
+            ]
+        }
+    }
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    # Should still work with the single record
+    from datetime import datetime, timezone
+    assert processed["bedtime_start"] == datetime(2024, 1, 15, 23, 0, 0, tzinfo=timezone.utc)
+
+
+def test_select_primary_sleep_multiple_long_sleeps():
+    """Test that the latest long_sleep is used when multiple exist."""
+    result = OuraDataUpdateCoordinator._select_primary_sleep([
+        {"type": "long_sleep", "day": "2024-01-15", "bedtime_end": "07:00"},
+        {"type": "long_sleep", "day": "2024-01-16", "bedtime_end": "08:00"},
+    ])
+    assert result["bedtime_end"] == "08:00"
 
 
 def test_empty_data_handling():
