@@ -1,4 +1,24 @@
-﻿# 🎉 Oura Ring v2 Integration v2.5.2 - Timezone & Historical Statistics Fixes
+﻿# 🧪 Oura Ring v2 Integration v2.5.3-beta.1 - Bedtime Nap Fix
+
+Pre-release for testing the fix for [#49](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/49) - bedtime start/end updating inconsistently.
+
+## 🐛 FIXES IN v2.5.3-beta.1
+
+### Bedtime Start/End no longer overwritten by naps or rest detections
+
+- **Root Cause**: The Oura `/sleep` API returns all sleep periods (overnight, naps, rest detections, deleted). The integration was blindly using the last record in the array, so a nap or falsely detected rest period would overwrite bedtime_start/bedtime_end from the primary overnight sleep.
+- **Fix**: Added `_select_primary_sleep()` method that prefers `long_sleep` records (primary overnight sleep >3h) over naps, rejected rest detections, and deleted entries.
+- **Fallback**: If no `long_sleep` exists, uses the latest confirmed sleep/nap record (excluding `deleted` and `rest` types). Last resort: uses whatever record is available.
+- **User impact**: Bedtime Start and Bedtime End sensors now reliably reflect your primary overnight sleep, even when naps or ring rest detections occur during the day.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 57 automated tests passing (+4 new tests for sleep type filtering)
+- New tests cover: long_sleep preferred over naps, deleted/rest records skipped, fallback for legacy data without type field, latest long_sleep used when multiple exist
+
+---
+
+# 🎉 Oura Ring v2 Integration v2.5.2 - Timezone & Historical Statistics Fixes
 
 This release combines PR #45 and PR #47 into a single patch release focused on correct current-day data and reliable historical statistics backfill - Thank you @issmirnov
 
