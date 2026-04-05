@@ -41,6 +41,9 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "rest_mode": {"name": "Rest mode"}
+    },
     "sensor": {
       "sleep_score": {"name": "Sleep score"},
       "total_sleep_duration": {"name": "Total sleep duration"},
@@ -90,7 +93,19 @@
       "cardiovascular_age": {"name": "Cardiovascular age"},
       "optimal_bedtime_start": {"name": "Optimal bedtime start"},
       "optimal_bedtime_end": {"name": "Optimal bedtime end"},
-      "low_battery_alert": {"name": "Low battery alert"}
+      "low_battery_alert": {"name": "Low battery alert"},
+      "workouts_today": {"name": "Workouts today"},
+      "last_workout_type": {"name": "Last workout type"},
+      "last_workout_distance": {"name": "Last workout distance"},
+      "last_workout_calories": {"name": "Last workout calories"},
+      "last_workout_intensity": {"name": "Last workout intensity"},
+      "last_workout_duration": {"name": "Last workout duration"},
+      "mindfulness_sessions_today": {"name": "Mindfulness sessions today"},
+      "meditation_duration_today": {"name": "Meditation duration today"},
+      "tags_today": {"name": "Tags today"},
+      "tag_count_today": {"name": "Tag count today"},
+      "rest_mode_start": {"name": "Rest mode start"},
+      "rest_mode_end": {"name": "Rest mode end"}
     }
   }
 }

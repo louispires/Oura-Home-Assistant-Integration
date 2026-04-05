@@ -32,11 +32,18 @@ def test_mock_hass_fixture(mock_hass: HomeAssistant):
 def test_mock_oura_api_data_fixture(mock_oura_api_data: dict):
     """Test that API data fixture contains expected data."""
     assert "sleep" in mock_oura_api_data
+    assert "sleep_detail" in mock_oura_api_data
     assert "readiness" in mock_oura_api_data
     assert "activity" in mock_oura_api_data
     assert "heartrate" in mock_oura_api_data
+    assert "workout" in mock_oura_api_data
+    assert "session" in mock_oura_api_data
+    assert "tag" in mock_oura_api_data
+    assert "enhanced_tag" in mock_oura_api_data
+    assert "rest_mode" in mock_oura_api_data
     assert len(mock_oura_api_data["sleep"]["data"]) > 0
     assert mock_oura_api_data["sleep"]["data"][0]["score"] == 85
+    assert mock_oura_api_data["sleep_detail"]["data"][0]["efficiency"] == 92
 
 
 def test_mock_oura_api_client_fixture(mock_oura_api_client: AsyncMock):

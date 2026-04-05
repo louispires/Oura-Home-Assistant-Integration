@@ -1,7 +1,7 @@
 """Pytest fixtures for Oura Ring integration tests."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -47,10 +47,14 @@ def mock_config_entry() -> ConfigEntry:
 @pytest.fixture
 def mock_oura_api_data() -> dict[str, Any]:
     """Mock Oura API response data."""
+    current_day = datetime.now(timezone.utc).date().isoformat()
+    next_day = (datetime.now(timezone.utc).date() + timedelta(days=1)).isoformat()
+
     return {
         "sleep": {
             "data": [
                 {
+                    "day": current_day,
                     "score": 85,
                     "contributors": {
                         "efficiency": 90,
@@ -63,6 +67,8 @@ def mock_oura_api_data() -> dict[str, Any]:
         "sleep_detail": {
             "data": [
                 {
+                    "day": current_day,
+                    "efficiency": 92,
                     "total_sleep_duration": 28800,  # 8 hours
                     "deep_sleep_duration": 7200,    # 2 hours
                     "rem_sleep_duration": 7200,     # 2 hours
@@ -81,6 +87,7 @@ def mock_oura_api_data() -> dict[str, Any]:
         "readiness": {
             "data": [
                 {
+                    "day": current_day,
                     "score": 82,
                     "temperature_deviation": -0.5,
                     "contributors": {
@@ -93,6 +100,7 @@ def mock_oura_api_data() -> dict[str, Any]:
         "activity": {
             "data": [
                 {
+                    "day": current_day,
                     "score": 88,
                     "steps": 12345,
                     "active_calories": 450,
@@ -114,8 +122,9 @@ def mock_oura_api_data() -> dict[str, Any]:
         "stress": {
             "data": [
                 {
-                    "stress_high_duration": 3600,
-                    "recovery_high_duration": 1800,
+                    "day": current_day,
+                    "stress_high": 3600,
+                    "recovery_high": 1800,
                     "day_summary": "good",
                 }
             ]
@@ -123,10 +132,13 @@ def mock_oura_api_data() -> dict[str, Any]:
         "resilience": {
             "data": [
                 {
+                    "day": current_day,
                     "level": "solid",
-                    "sleep_recovery_score": 85,
-                    "daytime_recovery_score": 78,
-                    "contributors": {"activity_score": 82},
+                    "contributors": {
+                        "sleep_recovery": 85,
+                        "daytime_recovery": 78,
+                        "stress": 82,
+                    },
                 }
             ]
         },
@@ -139,12 +151,69 @@ def mock_oura_api_data() -> dict[str, Any]:
             ]
         },
         "vo2_max": {"data": [{"vo2_max": 45.2}]},
-        "cardiovascular_age": {"data": [{"age": 28}]},
+        "cardiovascular_age": {"data": [{"vascular_age": 28}]},
         "sleep_time": {
             "data": [
                 {
-                    "optimal_bedtime_start": "22:00:00",
-                    "optimal_bedtime_end": "23:00:00",
+                    "day": current_day,
+                    "optimal_bedtime": {
+                        "day_tz": 0,
+                        "start_offset": 79200,
+                        "end_offset": 82800,
+                    },
+                }
+            ]
+        },
+        "workout": {
+            "data": [
+                {
+                    "day": current_day,
+                    "activity": "running",
+                    "distance": 5000,
+                    "calories": 320,
+                    "intensity": "moderate",
+                    "start_datetime": f"{current_day}T06:30:00+00:00",
+                    "end_datetime": f"{current_day}T07:00:00+00:00",
+                }
+            ]
+        },
+        "session": {
+            "data": [
+                {
+                    "day": current_day,
+                    "type": "meditation",
+                    "start_datetime": f"{current_day}T20:00:00+00:00",
+                    "end_datetime": f"{current_day}T20:10:00+00:00",
+                }
+            ]
+        },
+        "tag": {
+            "data": [
+                {
+                    "day": current_day,
+                    "tags": ["coffee", "travel"],
+                }
+            ]
+        },
+        "enhanced_tag": {
+            "data": [
+                {
+                    "day": current_day,
+                    "tag_type_code": "coffee",
+                    "start_time": f"{current_day}T08:00:00+00:00",
+                    "end_time": f"{current_day}T08:15:00+00:00",
+                    "comment": "Morning coffee",
+                }
+            ]
+        },
+        "rest_mode": {
+            "data": [
+                {
+                    "id": "rest-mode-1",
+                    "start_day": current_day,
+                    "end_day": next_day,
+                    "start_time": f"{current_day}T00:00:00+00:00",
+                    "end_time": f"{next_day}T23:59:59+00:00",
                 }
             ]
         },
@@ -220,4 +289,9 @@ def mock_empty_api_response() -> dict[str, Any]:
         "vo2_max": {"data": []},
         "cardiovascular_age": {"data": []},
         "sleep_time": {"data": []},
+        "workout": {"data": []},
+        "session": {"data": []},
+        "tag": {"data": []},
+        "enhanced_tag": {"data": []},
+        "rest_mode": {"data": []},
     }

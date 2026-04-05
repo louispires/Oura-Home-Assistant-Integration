@@ -1,13 +1,14 @@
 """DataUpdateCoordinator for Oura Ring."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import OuraApiClient
 from .const import DOMAIN, DEFAULT_UPDATE_INTERVAL
@@ -124,8 +125,38 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._process_vo2_max(data, processed)
         self._process_cardiovascular_age(data, processed)
         self._process_sleep_time(data, processed)
+        self._process_workout(data, processed)
+        self._process_session(data, processed)
+        self._process_tag(data, processed)
+        self._process_enhanced_tag(data, processed)
+        self._process_rest_mode(data, processed)
 
         return processed
+
+    @staticmethod
+    def _parse_api_day(day_value: str | None) -> date | None:
+        """Parse an API day value to a date."""
+        if not day_value:
+            return None
+
+        try:
+            return datetime.fromisoformat(day_value.split("T")[0]).date()
+        except ValueError:
+            try:
+                return datetime.strptime(day_value.split("T")[0], "%Y-%m-%d").date()
+            except ValueError:
+                return None
+
+    @staticmethod
+    def _parse_iso_datetime(value: str | None) -> datetime | None:
+        """Parse an ISO 8601 datetime string."""
+        if not value:
+            return None
+
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return None
 
     def _process_sleep_scores(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process sleep scores (contribution scores, not durations)."""
@@ -137,7 +168,6 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if day := latest_sleep.get("day"):
                     processed["_data_date"] = day
                 if contributors := latest_sleep.get("contributors"):
-                    processed["sleep_efficiency"] = contributors.get("efficiency")
                     processed["restfulness"] = contributors.get("restfulness")
                     processed["sleep_timing"] = contributors.get("timing")
 
@@ -146,6 +176,9 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if sleep_detail_data := data.get("sleep_detail", {}).get("data"):
             if sleep_detail_data and len(sleep_detail_data) > 0:
                 latest_sleep_detail = sleep_detail_data[-1]
+
+                if (efficiency := latest_sleep_detail.get("efficiency")) is not None:
+                    processed["sleep_efficiency"] = efficiency
 
                 # Extract duration values
                 total_sleep_seconds = latest_sleep_detail.get("total_sleep_duration")
@@ -357,3 +390,134 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             processed["optimal_bedtime_end"] = end_dt
                         except Exception as e:
                             _LOGGER.warning("Error calculating sleep time: %s", e)
+
+    _LAST_WORKOUT_KEYS = (
+        "last_workout_type",
+        "last_workout_distance",
+        "last_workout_calories",
+        "last_workout_intensity",
+        "last_workout_duration",
+        "_last_workout_raw",
+    )
+
+    def _process_workout(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
+        """Process workout summaries for current-day entities."""
+        if workout_data := data.get("workout", {}).get("data"):
+            if workout_data and len(workout_data) > 0:
+                today = dt_util.now().date()
+                today_workouts = [
+                    workout
+                    for workout in workout_data
+                    if self._parse_api_day(workout.get("day")) == today
+                ]
+                processed["workouts_today"] = len(today_workouts)
+
+                latest_workout = workout_data[-1]
+                processed["last_workout_type"] = latest_workout.get("activity")
+                if (distance := latest_workout.get("distance")) is not None:
+                    processed["last_workout_distance"] = distance
+                if (calories := latest_workout.get("calories")) is not None:
+                    processed["last_workout_calories"] = calories
+                processed["last_workout_intensity"] = latest_workout.get("intensity")
+
+                start_dt = self._parse_iso_datetime(latest_workout.get("start_datetime"))
+                end_dt = self._parse_iso_datetime(latest_workout.get("end_datetime"))
+                if start_dt and end_dt:
+                    processed["last_workout_duration"] = (end_dt - start_dt).total_seconds() / 60
+
+                processed["_last_workout_raw"] = latest_workout
+                return
+
+        # No workout data in current API window — carry forward previous values
+        processed["workouts_today"] = 0
+        if self.data:
+            for key in self._LAST_WORKOUT_KEYS:
+                if key in self.data:
+                    processed[key] = self.data[key]
+
+    def _process_session(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
+        """Process current-day mindfulness session summaries."""
+        if session_data := data.get("session", {}).get("data"):
+            if session_data and len(session_data) > 0:
+                today = dt_util.now().date()
+                mindfulness_types = {"meditation", "breathing", "rest"}
+                today_sessions = [
+                    session
+                    for session in session_data
+                    if self._parse_api_day(session.get("day")) == today
+                    and session.get("type") in mindfulness_types
+                ]
+
+                processed["mindfulness_sessions_today"] = len(today_sessions)
+
+                total_duration_seconds = 0.0
+                for session in today_sessions:
+                    start_dt = self._parse_iso_datetime(session.get("start_datetime"))
+                    end_dt = self._parse_iso_datetime(session.get("end_datetime"))
+                    if start_dt and end_dt:
+                        total_duration_seconds += (end_dt - start_dt).total_seconds()
+
+                processed["meditation_duration_today"] = total_duration_seconds / 60
+
+    def _process_tag(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
+        """Process current-day tags."""
+        if tag_data := data.get("tag", {}).get("data"):
+            if tag_data and len(tag_data) > 0:
+                today = dt_util.now().date()
+                today_tags: list[str] = []
+
+                for tag_entry in tag_data:
+                    if self._parse_api_day(tag_entry.get("day")) != today:
+                        continue
+                    tags = tag_entry.get("tags")
+                    if isinstance(tags, list):
+                        today_tags.extend(str(tag) for tag in tags if tag)
+
+                unique_tags = list(dict.fromkeys(today_tags))
+                processed["tags_today"] = ", ".join(unique_tags) if unique_tags else ""
+                processed["tag_count_today"] = len(unique_tags)
+                processed["_tags_today_list"] = unique_tags
+
+    def _process_enhanced_tag(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
+        """Process enhanced tag metadata for current-day attributes."""
+        if enhanced_tag_data := data.get("enhanced_tag", {}).get("data"):
+            if enhanced_tag_data and len(enhanced_tag_data) > 0:
+                today = dt_util.now().date()
+                today_enhanced_tags: list[dict[str, Any]] = []
+
+                for tag_entry in enhanced_tag_data:
+                    if self._parse_api_day(tag_entry.get("day")) != today:
+                        continue
+
+                    today_enhanced_tags.append(
+                        {
+                            "tag_type_code": tag_entry.get("tag_type_code"),
+                            "start_time": tag_entry.get("start_time"),
+                            "end_time": tag_entry.get("end_time"),
+                            "comment": tag_entry.get("comment"),
+                        }
+                    )
+
+                if today_enhanced_tags:
+                    processed["_enhanced_tags_today"] = today_enhanced_tags
+
+    def _process_rest_mode(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
+        """Process current rest mode state."""
+        processed["rest_mode_active"] = False
+
+        if rest_mode_data := data.get("rest_mode", {}).get("data"):
+            if rest_mode_data and len(rest_mode_data) > 0:
+                now = dt_util.now()
+
+                for period in rest_mode_data:
+                    start_dt = self._parse_iso_datetime(period.get("start_time"))
+                    end_dt = self._parse_iso_datetime(period.get("end_time"))
+                    if not start_dt or not end_dt:
+                        continue
+
+                    if start_dt <= now <= end_dt:
+                        processed["rest_mode_active"] = True
+                        processed["rest_mode_start"] = start_dt
+                        processed["rest_mode_end"] = end_dt
+                        processed["_active_rest_mode_raw"] = period
+                        break
