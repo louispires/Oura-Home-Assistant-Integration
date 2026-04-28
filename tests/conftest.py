@@ -217,6 +217,29 @@ def mock_oura_api_data() -> dict[str, Any]:
                 }
             ]
         },
+        "ring_battery_level": {
+            "data": [
+                {
+                    "timestamp": f"{current_day}T08:00:00+00:00",
+                    "timestamp_unix": 1705312800000,
+                    "level": 75,
+                    "charging": False,
+                    "in_charger": False,
+                }
+            ]
+        },
+        "ring_configuration": {
+            "data": [
+                {
+                    "id": "ring-config-1",
+                    "hardware_type": "gen4",
+                    "firmware_version": "2.8.10",
+                    "color": "stealth_black",
+                    "design": "horizon",
+                    "size": 9,
+                }
+            ]
+        },
     }
 
 
@@ -294,4 +317,6 @@ def mock_empty_api_response() -> dict[str, Any]:
         "tag": {"data": []},
         "enhanced_tag": {"data": []},
         "rest_mode": {"data": []},
+        "ring_battery_level": {"data": []},
+        "ring_configuration": {"data": []},
     }

@@ -31,6 +31,8 @@ class MockCoordinator:
     _process_tag = OuraDataUpdateCoordinator._process_tag
     _process_enhanced_tag = OuraDataUpdateCoordinator._process_enhanced_tag
     _process_rest_mode = OuraDataUpdateCoordinator._process_rest_mode
+    _process_ring_battery_level = OuraDataUpdateCoordinator._process_ring_battery_level
+    _process_ring_configuration = OuraDataUpdateCoordinator._process_ring_configuration
     _parse_api_day = staticmethod(OuraDataUpdateCoordinator._parse_api_day)
     _parse_iso_datetime = staticmethod(OuraDataUpdateCoordinator._parse_iso_datetime)
 

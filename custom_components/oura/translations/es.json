@@ -42,7 +42,8 @@
   },
   "entity": {
     "binary_sensor": {
-      "rest_mode": {"name": "Modo de descanso"}
+      "rest_mode": {"name": "Modo de descanso"},
+      "ring_charging": {"name": "Anillo cargando"}
     },
     "sensor": {
       "sleep_score": {"name": "Puntuación de sueño"},
@@ -105,7 +106,8 @@
       "tags_today": {"name": "Etiquetas de hoy"},
       "tag_count_today": {"name": "Cantidad de etiquetas de hoy"},
       "rest_mode_start": {"name": "Inicio del modo de descanso"},
-      "rest_mode_end": {"name": "Fin del modo de descanso"}
+      "rest_mode_end": {"name": "Fin del modo de descanso"},
+      "ring_battery_level": {"name": "Nivel de batería del anillo"}
     }
   }
 }

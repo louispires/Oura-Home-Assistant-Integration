@@ -130,6 +130,8 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._process_tag(data, processed)
         self._process_enhanced_tag(data, processed)
         self._process_rest_mode(data, processed)
+        self._process_ring_battery_level(data, processed)
+        self._process_ring_configuration(data, processed)
 
         return processed
 
@@ -521,3 +523,23 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         processed["rest_mode_end"] = end_dt
                         processed["_active_rest_mode_raw"] = period
                         break
+
+    def _process_ring_battery_level(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
+        """Process ring battery level and charging state."""
+        if battery_data := data.get("ring_battery_level", {}).get("data"):
+            if battery_data and len(battery_data) > 0:
+                latest = battery_data[-1]
+                processed["ring_battery_level"] = latest.get("level")
+                charging = latest.get("charging")
+                processed["ring_battery_charging"] = bool(charging) if charging is not None else None
+
+    def _process_ring_configuration(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
+        """Process ring configuration for device info enrichment."""
+        if ring_config_data := data.get("ring_configuration", {}).get("data"):
+            if ring_config_data and len(ring_config_data) > 0:
+                config = ring_config_data[0]
+                processed["ring_hardware_type"] = config.get("hardware_type")
+                processed["ring_firmware_version"] = config.get("firmware_version")
+                processed["ring_color"] = config.get("color")
+                processed["ring_design"] = config.get("design")
+                processed["ring_size"] = config.get("size")
