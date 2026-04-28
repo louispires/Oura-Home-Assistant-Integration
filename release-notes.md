@@ -1,4 +1,55 @@
-﻿# 🎉 Oura Ring v2 Integration v2.6.0 - Workout, Session, Tags & Rest Mode
+﻿# 🎉 Oura Ring v2 Integration v2.7.0 - Ring Battery Level & Device Info Enrichment
+
+This release adds battery monitoring for your Oura Ring via the new Oura API v1.29 endpoints.
+
+## ✨ FEATURES IN v2.7.0
+
+### New Ring Battery Level Sensor
+
+- **New sensor**: `ring_battery_level` — shows current ring battery percentage (0–100%).
+- **Device class**: `battery` — HA automatically renders the appropriate icon and colour.
+- **Entity category**: Diagnostic (grouped under device diagnostics, not cluttering the main dashboard).
+- **Data source**: New Oura API 1.29 `/v2/usercollection/ring_battery_level` endpoint, fetched with `?latest=true` for efficiency.
+
+### New Ring Charging Binary Sensor
+
+- **New binary sensor**: `ring_charging` — `on` when the ring is in the charger and charging.
+- **Device class**: `battery_charging` — automatable (e.g. notifications when charging starts/stops).
+- **Data source**: Same battery level endpoint — uses the `charging` field from the latest reading.
+
+### Device Info Enrichment from Ring Configuration
+
+- **Model** in HA device registry now shows ring generation (e.g. `Oura Ring Gen4`, `Oura Ring Gen3`).
+- **Firmware version** is now displayed as software version in the HA device card.
+- **Data source**: Existing `/v2/usercollection/ring_configuration` endpoint — no new OAuth scope required.
+- Falls back gracefully to `Oura Ring` when configuration data is unavailable.
+
+## 📊 ENTITY COUNT UPDATE
+
+- **Previous version**: 61 sensors + 1 binary sensor
+- **This version**: 62 sensors + 2 binary sensors
+
+## 🔧 TECHNICAL IMPROVEMENTS
+
+- Extended API fan-out with two new endpoint methods: `_async_get_ring_battery_level` and `_async_get_ring_configuration`.
+- Both new endpoints handle 401/404 gracefully and return empty data (consistent with other optional endpoints).
+- `device_info` in `sensor.py` and `binary_sensor.py` now dynamically reflects ring hardware from coordinator data.
+- Shared `_oura_device_info()` helper in `binary_sensor.py` eliminates duplication between binary sensor entities.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ Full Docker test suite passing in Home Assistant test environment.
+- ✅ 83 automated tests passing.
+- ✅ 28 new tests added covering:
+  - Ring battery coordinator processing (all edge cases)
+  - Ring configuration extraction
+  - API error handling (401/404 → empty data)
+  - Binary sensor availability and `is_on` logic
+  - Device info enrichment (model + firmware version)
+
+---
+
+# 🎉 Oura Ring v2 Integration v2.6.0 - Workout, Session, Tags & Rest Mode
 
 This release introduces the first major post-v2.5.2 feature expansion with new workout/session tracking, tags and rest mode entities, and a sleep efficiency data correctness fix.
 

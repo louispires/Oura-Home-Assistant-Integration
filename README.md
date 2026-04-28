@@ -10,7 +10,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 ## Features
 
 - **OAuth2 Authentication**: Secure authentication using Home Assistant's application credentials
-- **Comprehensive Data**: 61 sensors and 1 binary sensor covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, and more
+- **Comprehensive Data**: 62 sensors and 2 binary sensors covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, battery, and more
 - **HA 2025.11 Compliant**: Modern entity naming, translation keys, entity categories, and proper state classes
 - **Historical Data Loading**: Automatically loads 3 months of historical data on first setup (configurable 1-48 months, up to 4 years)
 - **Expanded Daily Tracking**: Adds workout, mindfulness session, tag, and rest mode tracking with historical statistics support
@@ -18,7 +18,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - **Multi-Account Support**: Entry-scoped unique IDs allow multiple Oura accounts
 - **HACS Compatible**: Easy installation and updates via HACS
 - **Modern Architecture**: Configuration-driven design following latest Home Assistant standards
-- **Comprehensive Testing**: 50 automated tests ensuring reliability
+- **Comprehensive Testing**: 83 automated tests ensuring reliability
 - **Efficient Updates**: Uses DataUpdateCoordinator with specialized processing methods
 
 ## Available Sensors
@@ -116,10 +116,14 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Rest Mode Start
 - Rest Mode End
 
-### Binary Sensors (1)
-- Rest Mode
+### Ring Battery Sensors (1)
+- Ring Battery Level (current battery %, diagnostic)
 
-**Total: 61 sensors + 1 binary sensor**
+### Binary Sensors (2)
+- Rest Mode
+- Ring Charging
+
+**Total: 62 sensors + 2 binary sensors**
 
 **Important Notes**:
 - Sensors marked with ⚠️ may be **unavailable** for new Oura Ring users (typically the first few weeks of usage). The Oura API does not provide data for these sensors until sufficient baseline data has been collected. This is normal behavior and they may become available over time as you continue using your ring.
