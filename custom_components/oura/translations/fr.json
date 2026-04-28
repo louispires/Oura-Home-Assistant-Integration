@@ -42,7 +42,8 @@
   },
   "entity": {
     "binary_sensor": {
-      "rest_mode": {"name": "Mode repos"}
+      "rest_mode": {"name": "Mode repos"},
+      "ring_charging": {"name": "Anneau en charge"}
     },
     "sensor": {
       "sleep_score": {"name": "Score de sommeil"},
@@ -105,7 +106,8 @@
       "tags_today": {"name": "Tags du jour"},
       "tag_count_today": {"name": "Nombre de tags du jour"},
       "rest_mode_start": {"name": "Début du mode repos"},
-      "rest_mode_end": {"name": "Fin du mode repos"}
+      "rest_mode_end": {"name": "Fin du mode repos"},
+      "ring_battery_level": {"name": "Niveau de batterie de la bague"}
     }
   }
 }

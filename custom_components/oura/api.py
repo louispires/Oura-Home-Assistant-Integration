@@ -34,6 +34,8 @@ API_ENDPOINTS: dict[str, str] = {
     "tag": "_async_get_tag",
     "enhanced_tag": "_async_get_enhanced_tag",
     "rest_mode": "_async_get_rest_mode",
+    "ring_battery_level": "_async_get_ring_battery_level",
+    "ring_configuration": "_async_get_ring_configuration",
 }
 
 
@@ -332,6 +334,26 @@ class OuraApiClient:
         }
         try:
             return await self._async_get(url, params)
+        except ClientResponseError as err:
+            if err.status == 401:
+                return {"data": []}
+            raise
+
+    async def _async_get_ring_battery_level(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
+        """Get the latest ring battery level reading."""
+        url = f"{API_BASE_URL}/ring_battery_level"
+        try:
+            return await self._async_get(url, {"latest": "true"})
+        except ClientResponseError as err:
+            if err.status in (401, 404):
+                return {"data": []}
+            raise
+
+    async def _async_get_ring_configuration(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
+        """Get ring configuration (hardware type, firmware version, color, design, size)."""
+        url = f"{API_BASE_URL}/ring_configuration"
+        try:
+            return await self._async_get(url)
         except ClientResponseError as err:
             if err.status == 401:
                 return {"data": []}

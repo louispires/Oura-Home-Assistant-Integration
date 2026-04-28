@@ -42,7 +42,8 @@
   },
   "entity": {
     "binary_sensor": {
-      "rest_mode": {"name": "Rest mode"}
+      "rest_mode": {"name": "Rest mode"},
+      "ring_charging": {"name": "Ring charging"}
     },
     "sensor": {
       "sleep_score": {"name": "Sleep score"},
@@ -105,7 +106,8 @@
       "tags_today": {"name": "Tags today"},
       "tag_count_today": {"name": "Tag count today"},
       "rest_mode_start": {"name": "Rest mode start"},
-      "rest_mode_end": {"name": "Rest mode end"}
+      "rest_mode_end": {"name": "Rest mode end"},
+      "ring_battery_level": {"name": "Ring battery level"}
     }
   }
 }

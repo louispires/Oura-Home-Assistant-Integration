@@ -60,11 +60,18 @@ class OuraSensor(CoordinatorEntity[OuraDataUpdateCoordinator], SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information about this Oura Ring."""
+        model = "Oura Ring"
+        sw_version = None
+        if self.coordinator.data:
+            if hw_type := self.coordinator.data.get("ring_hardware_type"):
+                model = f"Oura Ring {hw_type.capitalize()}"
+            sw_version = self.coordinator.data.get("ring_firmware_version")
         return DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
             name="Oura Ring",
             manufacturer="Oura",
-            model="Oura Ring",
+            model=model,
+            sw_version=sw_version,
             entry_type=DeviceEntryType.SERVICE,
         )
 

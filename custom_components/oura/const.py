@@ -131,4 +131,7 @@ SENSOR_TYPES: Final = {
     # Rest mode sensors
     "rest_mode_start": {"name": "Rest Mode Start", "icon": "mdi:bed-clock", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "rest_mode"},
     "rest_mode_end": {"name": "Rest Mode End", "icon": "mdi:bed-clock", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "rest_mode"},
+
+    # Ring battery sensor
+    "ring_battery_level": {"name": "Ring Battery Level", "icon": "mdi:battery", "unit": "%", "device_class": "battery", "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "ring_battery_level"},
 }
