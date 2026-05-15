@@ -111,12 +111,14 @@ def test_process_sleep_details_low_battery_alert():
     """Test that low_battery_alert is extracted from sleep_detail data."""
     coordinator = MockCoordinator()
 
-    # Test with True value
+    # Test with True value (record must be completed to be processed)
     data_true = {
         "sleep_detail": {
             "data": [
                 {
-                    "low_battery_alert": True
+                    "bedtime_start": "2024-01-15T23:30:00+00:00",
+                    "bedtime_end": "2024-01-16T07:30:00+00:00",
+                    "low_battery_alert": True,
                 }
             ]
         }
@@ -130,7 +132,9 @@ def test_process_sleep_details_low_battery_alert():
         "sleep_detail": {
             "data": [
                 {
-                    "low_battery_alert": False
+                    "bedtime_start": "2024-01-15T23:30:00+00:00",
+                    "bedtime_end": "2024-01-16T07:30:00+00:00",
+                    "low_battery_alert": False,
                 }
             ]
         }
@@ -144,7 +148,9 @@ def test_process_sleep_details_low_battery_alert():
         "sleep_detail": {
             "data": [
                 {
-                    "total_sleep_duration": 28800
+                    "bedtime_start": "2024-01-15T23:30:00+00:00",
+                    "bedtime_end": "2024-01-16T07:30:00+00:00",
+                    "total_sleep_duration": 28800,
                 }
             ]
         }
@@ -366,7 +372,7 @@ def test_process_data_orchestration():
     coordinator = MockCoordinator()
     data = {
         "sleep": {"data": [{"score": 85, "contributors": {"efficiency": 90}}]},
-        "sleep_detail": {"data": [{"efficiency": 92}]},
+        "sleep_detail": {"data": [{"efficiency": 92, "bedtime_start": "2024-01-15T23:30:00+00:00", "bedtime_end": "2024-01-16T07:30:00+00:00"}]},
         "activity": {"data": [{"score": 88, "steps": 12345}]},
         "readiness": {"data": [{"score": 82}]}
     }
@@ -611,3 +617,94 @@ def test_process_rest_mode_data():
     assert processed["rest_mode_active"] is True
     assert processed["rest_mode_start"] == now - timedelta(hours=1)
     assert processed["rest_mode_end"] == now + timedelta(hours=1)
+
+
+# --- Bedtime sensor stability tests ---
+
+def test_bedtime_inprogress_record_filtered():
+    """In-progress record (null bedtime_end) is ignored; completed record used."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    completed_record = {
+        "type": "long_sleep",
+        "bedtime_start": "2024-01-15T23:00:00+00:00",
+        "bedtime_end": "2024-01-16T07:00:00+00:00",
+        "total_sleep_duration": 28800,
+    }
+    inprogress_record = {
+        "type": "long_sleep",
+        "bedtime_start": "2024-01-16T23:30:00+00:00",
+        "bedtime_end": None,  # still sleeping
+    }
+
+    data = {"sleep_detail": {"data": [completed_record, inprogress_record]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    assert processed["bedtime_start"] == datetime(2024, 1, 15, 23, 0, 0, tzinfo=timezone.utc)
+    assert processed["bedtime_end"] == datetime(2024, 1, 16, 7, 0, 0, tzinfo=timezone.utc)
+    assert processed["total_sleep_duration"] == 8.0
+
+
+def test_bedtime_long_sleep_preferred_over_nap():
+    """long_sleep type is preferred over a confirmed nap when both are completed."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    nap_record = {
+        "type": "sleep",
+        "bedtime_start": "2024-01-16T14:00:00+00:00",
+        "bedtime_end": "2024-01-16T14:45:00+00:00",
+    }
+    main_record = {
+        "type": "long_sleep",
+        "bedtime_start": "2024-01-15T23:00:00+00:00",
+        "bedtime_end": "2024-01-16T07:00:00+00:00",
+    }
+
+    data = {"sleep_detail": {"data": [nap_record, main_record]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    assert processed["bedtime_start"] == datetime(2024, 1, 15, 23, 0, 0, tzinfo=timezone.utc)
+    assert processed["bedtime_end"] == datetime(2024, 1, 16, 7, 0, 0, tzinfo=timezone.utc)
+
+
+def test_bedtime_fallback_to_existing_data():
+    """When only in-progress records exist, last known bedtime values are preserved."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    previous_start = datetime(2024, 1, 15, 23, 0, 0, tzinfo=timezone.utc)
+    previous_end = datetime(2024, 1, 16, 7, 0, 0, tzinfo=timezone.utc)
+    coordinator.data = {
+        "bedtime_start": previous_start,
+        "bedtime_end": previous_end,
+        "sleep_score": 82,
+    }
+
+    inprogress_record = {
+        "type": "long_sleep",
+        "bedtime_start": "2024-01-16T23:30:00+00:00",
+        "bedtime_end": None,
+    }
+    data = {"sleep_detail": {"data": [inprogress_record]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    assert processed["bedtime_start"] == previous_start
+    assert processed["bedtime_end"] == previous_end
+
+
+def test_bedtime_no_data_no_existing():
+    """Empty sleep_detail with no self.data → no crash, bedtime keys absent."""
+    coordinator = MockCoordinator()
+    coordinator.data = None
+
+    data = {"sleep_detail": {"data": []}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    assert "bedtime_start" not in processed
+    assert "bedtime_end" not in processed
