@@ -1,4 +1,22 @@
-﻿# 🎉 Oura Ring v2 Integration v2.7.0 - Ring Battery Level & Device Info Enrichment
+﻿# 🛠️ Oura Ring v2 Integration v2.7.1 - Bedtime Sensor Stability Fix
+
+## 🐛 BUG FIXES IN v2.7.1
+
+### Bedtime Start / End Sensor Stability
+
+- **Fixed**: `sensor.oura_bedtime_start` and `sensor.oura_bedtime_end` going **Unknown** after midnight until morning ring sync (affects all ring generations).
+- **Fixed**: Bedtime Start showing random/incorrect values during active sleep tracking on some Gen 3 devices ([#49](https://github.com/louispires/oura-v2-custom-component/issues/49)).
+
+**Root cause**: Oura's `/sleep` API returns in-progress sleep records during active sleep tracking with `bedtime_end = null`. The integration was selecting the last record in the response array, which after midnight is the in-progress record for the current night rather than the completed sleep record.
+
+**Fix**:
+- Coordinator now filters for **completed** sleep records (both `bedtime_start` and `bedtime_end` present) before selecting the latest.
+- Prefers `long_sleep` type (main overnight sleep >3h) over naps when multiple completed records exist for the same day.
+- When no completed record is available (ring not yet synced after midnight), **preserves the last known bedtime values** rather than going Unknown.
+
+---
+
+# 🎉 Oura Ring v2 Integration v2.7.0 - Ring Battery Level & Device Info Enrichment
 
 This release adds battery monitoring for your Oura Ring via the new Oura API v1.29 endpoints.
 

@@ -175,72 +175,91 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _process_sleep_details(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process detailed sleep data (actual durations and HRV)."""
-        if sleep_detail_data := data.get("sleep_detail", {}).get("data"):
-            if sleep_detail_data and len(sleep_detail_data) > 0:
-                latest_sleep_detail = sleep_detail_data[-1]
+        sleep_detail_data = data.get("sleep_detail", {}).get("data") or []
 
-                if (efficiency := latest_sleep_detail.get("efficiency")) is not None:
-                    processed["sleep_efficiency"] = efficiency
+        # Only use completed records (both timestamps present). Oura returns in-progress
+        # records during active sleep with bedtime_end=null, which causes bedtime sensors
+        # to go Unknown or show the current night's start time rather than the last
+        # completed sleep.
+        completed = [
+            r for r in sleep_detail_data
+            if r.get("bedtime_start") and r.get("bedtime_end")
+        ]
 
-                # Extract duration values
-                total_sleep_seconds = latest_sleep_detail.get("total_sleep_duration")
-                deep_sleep_seconds = latest_sleep_detail.get("deep_sleep_duration")
-                rem_sleep_seconds = latest_sleep_detail.get("rem_sleep_duration")
-                light_sleep_seconds = latest_sleep_detail.get("light_sleep_duration")
+        if completed:
+            # Prefer long_sleep (main overnight sleep >3h) over naps when multiple
+            # completed records exist for the same day.
+            main_sleep = [r for r in completed if r.get("type") == "long_sleep"]
+            latest_sleep_detail = (main_sleep or completed)[-1]
+        else:
+            # No completed record yet (e.g. ring not synced after midnight).
+            # Preserve last known bedtime values so sensors don't flip to Unknown.
+            if self.data:
+                for key in ("bedtime_start", "bedtime_end"):
+                    if (existing := self.data.get(key)) is not None:
+                        processed[key] = existing
+            return
 
-                # Convert durations from seconds to hours
-                if total_sleep_seconds:
-                    processed["total_sleep_duration"] = total_sleep_seconds / 3600
-                if deep_sleep_seconds:
-                    processed["deep_sleep_duration"] = deep_sleep_seconds / 3600
-                if rem_sleep_seconds:
-                    processed["rem_sleep_duration"] = rem_sleep_seconds / 3600
-                if light_sleep_seconds:
-                    processed["light_sleep_duration"] = light_sleep_seconds / 3600
-                if awake := latest_sleep_detail.get("awake_time"):
-                    processed["awake_time"] = awake / 3600
-                if latency := latest_sleep_detail.get("latency"):
-                    processed["sleep_latency"] = latency / 60  # Convert to minutes
-                if time_in_bed := latest_sleep_detail.get("time_in_bed"):
-                    processed["time_in_bed"] = time_in_bed / 3600
+        if (efficiency := latest_sleep_detail.get("efficiency")) is not None:
+            processed["sleep_efficiency"] = efficiency
 
-                # Calculate sleep stage percentages
-                if total_sleep_seconds and total_sleep_seconds > 0:
-                    if deep_sleep_seconds is not None:
-                        processed["deep_sleep_percentage"] = round(
-                            (deep_sleep_seconds / total_sleep_seconds) * 100, 1
-                        )
-                    if rem_sleep_seconds is not None:
-                        processed["rem_sleep_percentage"] = round(
-                            (rem_sleep_seconds / total_sleep_seconds) * 100, 1
-                        )
+        # Extract duration values
+        total_sleep_seconds = latest_sleep_detail.get("total_sleep_duration")
+        deep_sleep_seconds = latest_sleep_detail.get("deep_sleep_duration")
+        rem_sleep_seconds = latest_sleep_detail.get("rem_sleep_duration")
+        light_sleep_seconds = latest_sleep_detail.get("light_sleep_duration")
 
-                # HRV during sleep
-                if average_hrv := latest_sleep_detail.get("average_hrv"):
-                    processed["average_sleep_hrv"] = average_hrv
+        # Convert durations from seconds to hours
+        if total_sleep_seconds:
+            processed["total_sleep_duration"] = total_sleep_seconds / 3600
+        if deep_sleep_seconds:
+            processed["deep_sleep_duration"] = deep_sleep_seconds / 3600
+        if rem_sleep_seconds:
+            processed["rem_sleep_duration"] = rem_sleep_seconds / 3600
+        if light_sleep_seconds:
+            processed["light_sleep_duration"] = light_sleep_seconds / 3600
+        if awake := latest_sleep_detail.get("awake_time"):
+            processed["awake_time"] = awake / 3600
+        if latency := latest_sleep_detail.get("latency"):
+            processed["sleep_latency"] = latency / 60  # Convert to minutes
+        if time_in_bed := latest_sleep_detail.get("time_in_bed"):
+            processed["time_in_bed"] = time_in_bed / 3600
 
-                # Bedtime timestamps (when you went to sleep and woke up)
-                # Parse ISO 8601 datetime strings (e.g., "2024-01-15T23:30:00+00:00") to datetime objects
-                if bedtime_start := latest_sleep_detail.get("bedtime_start"):
-                    try:
-                        processed["bedtime_start"] = datetime.fromisoformat(bedtime_start.replace('Z', '+00:00'))
-                    except (ValueError, AttributeError) as e:
-                        _LOGGER.debug("Error parsing bedtime_start '%s': %s", bedtime_start, e)
+        # Calculate sleep stage percentages
+        if total_sleep_seconds and total_sleep_seconds > 0:
+            if deep_sleep_seconds is not None:
+                processed["deep_sleep_percentage"] = round(
+                    (deep_sleep_seconds / total_sleep_seconds) * 100, 1
+                )
+            if rem_sleep_seconds is not None:
+                processed["rem_sleep_percentage"] = round(
+                    (rem_sleep_seconds / total_sleep_seconds) * 100, 1
+                )
 
-                if bedtime_end := latest_sleep_detail.get("bedtime_end"):
-                    try:
-                        processed["bedtime_end"] = datetime.fromisoformat(bedtime_end.replace('Z', '+00:00'))
-                    except (ValueError, AttributeError) as e:
-                        _LOGGER.debug("Error parsing bedtime_end '%s': %s", bedtime_end, e)
+        # HRV during sleep
+        if average_hrv := latest_sleep_detail.get("average_hrv"):
+            processed["average_sleep_hrv"] = average_hrv
 
+        # Bedtime timestamps (when you went to sleep and woke up)
+        if bedtime_start := latest_sleep_detail.get("bedtime_start"):
+            try:
+                processed["bedtime_start"] = datetime.fromisoformat(bedtime_start.replace('Z', '+00:00'))
+            except (ValueError, AttributeError) as e:
+                _LOGGER.debug("Error parsing bedtime_start '%s': %s", bedtime_start, e)
 
-                if lowest_heart_rate := latest_sleep_detail.get("lowest_heart_rate"):
-                    processed["lowest_sleep_heart_rate"] = lowest_heart_rate
-                if average_heart_rate := latest_sleep_detail.get("average_heart_rate"):
-                    processed["average_sleep_heart_rate"] = average_heart_rate
+        if bedtime_end := latest_sleep_detail.get("bedtime_end"):
+            try:
+                processed["bedtime_end"] = datetime.fromisoformat(bedtime_end.replace('Z', '+00:00'))
+            except (ValueError, AttributeError) as e:
+                _LOGGER.debug("Error parsing bedtime_end '%s': %s", bedtime_end, e)
 
-                # Low battery alert flag (always set, defaults to False)
-                processed["low_battery_alert"] = latest_sleep_detail.get("low_battery_alert", False)
+        if lowest_heart_rate := latest_sleep_detail.get("lowest_heart_rate"):
+            processed["lowest_sleep_heart_rate"] = lowest_heart_rate
+        if average_heart_rate := latest_sleep_detail.get("average_heart_rate"):
+            processed["average_sleep_heart_rate"] = average_heart_rate
+
+        # Low battery alert flag (always set, defaults to False)
+        processed["low_battery_alert"] = latest_sleep_detail.get("low_battery_alert", False)
 
     def _process_readiness(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process readiness data (contributors are scores 1-100)."""
