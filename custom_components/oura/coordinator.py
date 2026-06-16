@@ -186,6 +186,16 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if r.get("bedtime_start") and r.get("bedtime_end")
         ]
 
+        # Discard records older than 2 days and sort ascending by day so [-1] always
+        # picks the most recent calendar date, regardless of API response ordering.
+        today = dt_util.now().date()
+        max_age = today - timedelta(days=2)
+        completed = [
+            r for r in completed
+            if (self._parse_api_day(r.get("day")) or date.min) >= max_age
+        ]
+        completed.sort(key=lambda r: self._parse_api_day(r.get("day")) or date.min)
+
         if completed:
             # Prefer long_sleep (main overnight sleep >3h) over naps when multiple
             # completed records exist for the same day.
@@ -287,22 +297,46 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 processed["met_min_high"] = latest_activity.get("high_activity_met_minutes")
                 processed["met_min_medium"] = latest_activity.get("medium_activity_met_minutes")
                 processed["met_min_low"] = latest_activity.get("low_activity_met_minutes")
+                if (t := latest_activity.get("high_activity_time")) is not None:
+                    processed["high_activity_time"] = t / 60
+                if (t := latest_activity.get("medium_activity_time")) is not None:
+                    processed["medium_activity_time"] = t / 60
+                if (t := latest_activity.get("low_activity_time")) is not None:
+                    processed["low_activity_time"] = t / 60
 
     def _process_heart_rate(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process heart rate data with aggregation from recent readings."""
         if heartrate_data := data.get("heartrate", {}).get("data"):
-            if heartrate_data and len(heartrate_data) > 0:
-                # Latest reading
-                latest_hr = heartrate_data[-1]
-                processed["current_heart_rate"] = latest_hr.get("bpm")
-                processed["heart_rate_timestamp"] = latest_hr.get("timestamp")
+            if not heartrate_data:
+                return
 
-                # Aggregate recent readings
-                recent_readings = [hr.get("bpm") for hr in heartrate_data[-10:] if hr.get("bpm")]
-                if recent_readings:
-                    processed["average_heart_rate"] = sum(recent_readings) / len(recent_readings)
-                    processed["min_heart_rate"] = min(recent_readings)
-                    processed["max_heart_rate"] = max(recent_readings)
+            # Sort by timestamp to guarantee recency regardless of API return order
+            sorted_hr = sorted(heartrate_data, key=lambda x: x.get("timestamp", ""))
+
+            latest_hr = sorted_hr[-1]
+            processed["current_heart_rate"] = latest_hr.get("bpm")
+            if ts := latest_hr.get("timestamp"):
+                try:
+                    processed["heart_rate_timestamp"] = datetime.fromisoformat(
+                        ts.replace("Z", "+00:00")
+                    )
+                except (ValueError, AttributeError):
+                    pass
+
+            # Aggregate readings from the last 24 hours; fall back to last 10 by position
+            from datetime import timezone
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+            recent_readings = [
+                hr.get("bpm") for hr in sorted_hr
+                if hr.get("bpm") and hr.get("timestamp") and
+                (parsed := self._parse_iso_datetime(hr["timestamp"])) and parsed > cutoff
+            ]
+            if not recent_readings:
+                recent_readings = [hr.get("bpm") for hr in sorted_hr[-10:] if hr.get("bpm")]
+            if recent_readings:
+                processed["average_heart_rate"] = sum(recent_readings) / len(recent_readings)
+                processed["min_heart_rate"] = min(recent_readings)
+                processed["max_heart_rate"] = max(recent_readings)
 
     def _process_stress(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process stress data (durations and day summary)."""
@@ -349,6 +383,8 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if cardiovascular_age_data and len(cardiovascular_age_data) > 0:
                 latest_cv_age = cardiovascular_age_data[-1]
                 processed["cardiovascular_age"] = latest_cv_age.get("vascular_age")
+                if (pwv := latest_cv_age.get("pulse_wave_velocity")) is not None:
+                    processed["pulse_wave_velocity"] = pwv
 
     def _process_sleep_time(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process sleep time recommendations (optimal bedtime windows)."""

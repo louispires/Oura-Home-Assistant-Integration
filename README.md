@@ -5,12 +5,13 @@
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/louispires/oura-v2-custom-component/validate.yml?logo=github&label=HASSFEST%20validate)](https://github.com/louispires/oura-v2-custom-component/actions/workflows/validate.yml)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow.svg)](https://buymeacoffee.com/louispires)
 
-A modern Home Assistant custom integration for Oura Ring using the v2 API with OAuth2 authentication.
+A modern Home Assistant custom integration for Oura Ring using the v2 API with OAuth2 authentication. Supports all Oura Ring generations: **Gen 3**, **Ring 4**, and the new **Ring 5**.
 
 ## Features
 
+- **Oura Ring 5 Compatible**: Fully tested with all Oura Ring generations including the latest Oura Ring 5
 - **OAuth2 Authentication**: Secure authentication using Home Assistant's application credentials
-- **Comprehensive Data**: 62 sensors and 2 binary sensors covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, battery, and more
+- **Comprehensive Data**: 68 sensors and 2 binary sensors covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, battery, cardiovascular health, and more
 - **HA 2025.11 Compliant**: Modern entity naming, translation keys, entity categories, and proper state classes
 - **Historical Data Loading**: Automatically loads 3 months of historical data on first setup (configurable 1-48 months, up to 4 years)
 - **Expanded Daily Tracking**: Adds workout, mindfulness session, tag, and rest mode tracking with historical statistics support
@@ -52,23 +53,29 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 
 **Note**: Sensors marked with * may be unavailable if Oura doesn't have sufficient data to calculate the contributor score.
 
-### Activity Sensors (8)
+### Activity Sensors (11)
 - Activity Score
 - Steps
 - Active Calories
 - Total Calories
 - Target Calories
-- High Activity Time
-- Medium Activity Time
-- Low Activity Time
+- High Activity MET Minutes
+- Medium Activity MET Minutes
+- Low Activity MET Minutes
+- High Activity Time (actual duration in minutes)
+- Medium Activity Time (actual duration in minutes)
+- Low Activity Time (actual duration in minutes)
 
-### Heart Rate Sensors (6)
+### Heart Rate Sensors (7)
 - Current Heart Rate (latest reading)
-- Average Heart Rate (from recent readings)
-- Minimum Heart Rate (from recent readings)
-- Maximum Heart Rate (from recent readings)
+- Average Heart Rate (rolling 24-hour window)
+- Minimum Heart Rate (rolling 24-hour window)
+- Maximum Heart Rate (rolling 24-hour window)
+- Last Heart Rate Reading (timestamp of most recent reading, diagnostic)
 - Lowest Sleep Heart Rate (lowest heart rate during sleep)
 - Average Sleep Heart Rate (average heart rate during sleep)
+
+**Note**: Heart rate data reflects cloud-synced readings, not real-time Bluetooth readings from the Oura app. Use the "Last Heart Rate Reading" diagnostic sensor to verify data recency.
 
 ### HRV Sensors (1)
 - Average Sleep HRV (heart rate variability during sleep)
@@ -84,13 +91,14 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Daytime Recovery Score ⚠️
 - Stress Resilience Score ⚠️
 
-### SpO2 Sensors (2) - *Gen3/Ring4 only*
+### SpO2 Sensors (2) - *Gen3, Ring 4, and Ring 5*
 - SpO2 Average
 - Breathing Disturbance Index
 
-### Fitness Sensors (2) - *May be unavailable for new rings*
+### Fitness Sensors (3) - *Requires Oura membership*
 - VO2 Max ⚠️
 - Cardiovascular Age ⚠️
+- Pulse Wave Velocity (arterial stiffness in m/s, API 1.34+) ⚠️
 
 ### Sleep Optimization Sensors (2) - *May be unavailable for new rings*
 - Optimal Bedtime Start ⚠️
@@ -123,7 +131,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Rest Mode
 - Ring Charging
 
-**Total: 62 sensors + 2 binary sensors**
+**Total: 68 sensors + 2 binary sensors**
 
 **Important Notes**:
 - Sensors marked with ⚠️ may be **unavailable** for new Oura Ring users (typically the first few weeks of usage). The Oura API does not provide data for these sensors until sufficient baseline data has been collected. This is normal behavior and they may become available over time as you continue using your ring.

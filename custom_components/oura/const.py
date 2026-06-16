@@ -76,15 +76,19 @@ SENSOR_TYPES: Final = {
     "active_calories": {"name": "Active Calories", "icon": "mdi:fire", "unit": "kcal", "device_class": None, "state_class": "total", "entity_category": None, "data_category": "activity"},
     "total_calories": {"name": "Total Calories", "icon": "mdi:fire", "unit": "kcal", "device_class": None, "state_class": "total", "entity_category": None, "data_category": "activity"},
     "target_calories": {"name": "Target Calories", "icon": "mdi:bullseye", "unit": "kcal", "device_class": None, "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "activity"},
-    "met_min_high": {"name": "High Activity Time", "icon": "mdi:run-fast", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
-    "met_min_medium": {"name": "Medium Activity Time", "icon": "mdi:run", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
-    "met_min_low": {"name": "Low Activity Time", "icon": "mdi:walk", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
+    "met_min_high": {"name": "High Activity MET Minutes", "icon": "mdi:run-fast", "unit": None, "device_class": None, "state_class": "total", "entity_category": None, "data_category": "activity"},
+    "met_min_medium": {"name": "Medium Activity MET Minutes", "icon": "mdi:run", "unit": None, "device_class": None, "state_class": "total", "entity_category": None, "data_category": "activity"},
+    "met_min_low": {"name": "Low Activity MET Minutes", "icon": "mdi:walk", "unit": None, "device_class": None, "state_class": "total", "entity_category": None, "data_category": "activity"},
+    "high_activity_time": {"name": "High Activity Time", "icon": "mdi:run-fast", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
+    "medium_activity_time": {"name": "Medium Activity Time", "icon": "mdi:run", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
+    "low_activity_time": {"name": "Low Activity Time", "icon": "mdi:walk", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
 
     # Heart Rate sensors (from heartrate endpoint - more granular data)
     "current_heart_rate": {"name": "Current Heart Rate", "icon": "mdi:heart-pulse", "unit": "bpm", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "heartrate"},
     "average_heart_rate": {"name": "Average Heart Rate", "icon": "mdi:heart", "unit": "bpm", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "heartrate"},
     "min_heart_rate": {"name": "Minimum Heart Rate", "icon": "mdi:heart-minus", "unit": "bpm", "device_class": None, "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "heartrate"},
     "max_heart_rate": {"name": "Maximum Heart Rate", "icon": "mdi:heart-plus", "unit": "bpm", "device_class": None, "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "heartrate"},
+    "heart_rate_timestamp": {"name": "Last Heart Rate Reading", "icon": "mdi:clock-outline", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "heartrate"},
 
     # HRV sensors (from detailed sleep endpoint)
     "average_sleep_hrv": {"name": "Average Sleep HRV", "icon": "mdi:heart-pulse", "unit": "ms", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep_detail"},
@@ -107,6 +111,7 @@ SENSOR_TYPES: Final = {
     # Fitness sensors
     "vo2_max": {"name": "VO2 Max", "icon": "mdi:heart-pulse", "unit": "ml/kg/min", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "vo2_max"},
     "cardiovascular_age": {"name": "Cardiovascular Age", "icon": "mdi:heart-pulse", "unit": "years", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "cardiovascular_age"},
+    "pulse_wave_velocity": {"name": "Pulse Wave Velocity", "icon": "mdi:sine-wave", "unit": "m/s", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "cardiovascular_age"},
 
     # Sleep optimization sensors
     "optimal_bedtime_start": {"name": "Optimal Bedtime Start", "icon": "mdi:bed-clock", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "sleep_time"},

@@ -66,10 +66,13 @@ def test_process_sleep_details_with_durations():
     """Test processing of sleep detail data with duration conversions."""
     from datetime import datetime, timezone
     coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
     data = {
         "sleep_detail": {
             "data": [
                 {
+                    "day": today,
+                    "type": "long_sleep",
                     "efficiency": 92,
                     "total_sleep_duration": 28800,  # 8 hours in seconds
                     "deep_sleep_duration": 7200,    # 2 hours
@@ -109,13 +112,16 @@ def test_process_sleep_details_with_durations():
 
 def test_process_sleep_details_low_battery_alert():
     """Test that low_battery_alert is extracted from sleep_detail data."""
+    from datetime import datetime, timezone
     coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
 
     # Test with True value (record must be completed to be processed)
     data_true = {
         "sleep_detail": {
             "data": [
                 {
+                    "day": today,
                     "bedtime_start": "2024-01-15T23:30:00+00:00",
                     "bedtime_end": "2024-01-16T07:30:00+00:00",
                     "low_battery_alert": True,
@@ -132,6 +138,7 @@ def test_process_sleep_details_low_battery_alert():
         "sleep_detail": {
             "data": [
                 {
+                    "day": today,
                     "bedtime_start": "2024-01-15T23:30:00+00:00",
                     "bedtime_end": "2024-01-16T07:30:00+00:00",
                     "low_battery_alert": False,
@@ -148,6 +155,7 @@ def test_process_sleep_details_low_battery_alert():
         "sleep_detail": {
             "data": [
                 {
+                    "day": today,
                     "bedtime_start": "2024-01-15T23:30:00+00:00",
                     "bedtime_end": "2024-01-16T07:30:00+00:00",
                     "total_sleep_duration": 28800,
@@ -200,7 +208,10 @@ def test_process_activity():
                     "target_calories": 500,
                     "high_activity_met_minutes": 120,
                     "medium_activity_met_minutes": 180,
-                    "low_activity_met_minutes": 240
+                    "low_activity_met_minutes": 240,
+                    "high_activity_time": 3600,    # 60 minutes in seconds
+                    "medium_activity_time": 5400,  # 90 minutes in seconds
+                    "low_activity_time": 7200,     # 120 minutes in seconds
                 }
             ]
         }
@@ -216,28 +227,30 @@ def test_process_activity():
     assert processed["met_min_high"] == 120
     assert processed["met_min_medium"] == 180
     assert processed["met_min_low"] == 240
+    assert processed["high_activity_time"] == 60.0
+    assert processed["medium_activity_time"] == 90.0
+    assert processed["low_activity_time"] == 120.0
 
 
 def test_process_heart_rate_with_aggregation():
-    """Test processing of heart rate data with aggregation."""
+    """Test processing of heart rate data with aggregation (uses recent timestamps)."""
+    from datetime import datetime, timedelta, timezone
     coordinator = MockCoordinator()
+    now = datetime.now(timezone.utc)
+    # Use recent timestamps so they fall within the 24h aggregation window
+    t = [(now - timedelta(minutes=20 - i * 5)).strftime("%Y-%m-%dT%H:%M:%S+00:00") for i in range(5)]
+    bpms = [55, 58, 62, 60, 57]
     data = {
         "heartrate": {
-            "data": [
-                {"bpm": 55, "timestamp": "2024-01-01T00:00:00"},
-                {"bpm": 58, "timestamp": "2024-01-01T00:05:00"},
-                {"bpm": 62, "timestamp": "2024-01-01T00:10:00"},
-                {"bpm": 60, "timestamp": "2024-01-01T00:15:00"},
-                {"bpm": 57, "timestamp": "2024-01-01T00:20:00"}
-            ]
+            "data": [{"bpm": bpms[i], "timestamp": t[i]} for i in range(5)]
         }
     }
     processed = {}
     coordinator._process_heart_rate(data, processed)
 
     assert processed["current_heart_rate"] == 57
-    assert processed["heart_rate_timestamp"] == "2024-01-01T00:20:00"
-    assert processed["average_heart_rate"] == (55 + 58 + 62 + 60 + 57) / 5
+    assert isinstance(processed["heart_rate_timestamp"], datetime)
+    assert processed["average_heart_rate"] == sum(bpms) / len(bpms)
     assert processed["min_heart_rate"] == 55
     assert processed["max_heart_rate"] == 62
 
@@ -329,13 +342,14 @@ def test_process_cardiovascular_age():
     coordinator = MockCoordinator()
     data = {
         "cardiovascular_age": {
-            "data": [{"vascular_age": 28}]
+            "data": [{"vascular_age": 28, "pulse_wave_velocity": 6.5}]
         }
     }
     processed = {}
     coordinator._process_cardiovascular_age(data, processed)
 
     assert processed["cardiovascular_age"] == 28
+    assert processed["pulse_wave_velocity"] == 6.5
 
 
 def test_process_sleep_time():
@@ -369,10 +383,12 @@ def test_process_sleep_time():
 
 def test_process_data_orchestration():
     """Test the main _process_data orchestration method."""
+    from datetime import datetime, timezone
     coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
     data = {
         "sleep": {"data": [{"score": 85, "contributors": {"efficiency": 90}}]},
-        "sleep_detail": {"data": [{"efficiency": 92, "bedtime_start": "2024-01-15T23:30:00+00:00", "bedtime_end": "2024-01-16T07:30:00+00:00"}]},
+        "sleep_detail": {"data": [{"day": today, "efficiency": 92, "bedtime_start": "2024-01-15T23:30:00+00:00", "bedtime_end": "2024-01-16T07:30:00+00:00"}]},
         "activity": {"data": [{"score": 88, "steps": 12345}]},
         "readiness": {"data": [{"score": 82}]}
     }
@@ -626,13 +642,16 @@ def test_bedtime_inprogress_record_filtered():
     from datetime import datetime, timezone
 
     coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
     completed_record = {
+        "day": today,
         "type": "long_sleep",
         "bedtime_start": "2024-01-15T23:00:00+00:00",
         "bedtime_end": "2024-01-16T07:00:00+00:00",
         "total_sleep_duration": 28800,
     }
     inprogress_record = {
+        "day": today,
         "type": "long_sleep",
         "bedtime_start": "2024-01-16T23:30:00+00:00",
         "bedtime_end": None,  # still sleeping
@@ -652,12 +671,15 @@ def test_bedtime_long_sleep_preferred_over_nap():
     from datetime import datetime, timezone
 
     coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
     nap_record = {
+        "day": today,
         "type": "sleep",
         "bedtime_start": "2024-01-16T14:00:00+00:00",
         "bedtime_end": "2024-01-16T14:45:00+00:00",
     }
     main_record = {
+        "day": today,
         "type": "long_sleep",
         "bedtime_start": "2024-01-15T23:00:00+00:00",
         "bedtime_end": "2024-01-16T07:00:00+00:00",
@@ -708,3 +730,207 @@ def test_bedtime_no_data_no_existing():
 
     assert "bedtime_start" not in processed
     assert "bedtime_end" not in processed
+
+
+# --- New tests for v2.8.0 changes ---
+
+def test_process_activity_time_fields():
+    """Activity time fields (seconds) are converted to minutes."""
+    coordinator = MockCoordinator()
+    data = {
+        "activity": {
+            "data": [
+                {
+                    "high_activity_time": 1800,    # 30 min
+                    "medium_activity_time": 3600,  # 60 min
+                    "low_activity_time": 0,
+                }
+            ]
+        }
+    }
+    processed = {}
+    coordinator._process_activity(data, processed)
+
+    assert processed["high_activity_time"] == 30.0
+    assert processed["medium_activity_time"] == 60.0
+    assert processed["low_activity_time"] == 0.0
+
+
+def test_process_activity_time_fields_absent():
+    """Missing activity time fields don't populate keys."""
+    coordinator = MockCoordinator()
+    data = {
+        "activity": {
+            "data": [{"high_activity_met_minutes": 50}]
+        }
+    }
+    processed = {}
+    coordinator._process_activity(data, processed)
+
+    assert "high_activity_time" not in processed
+    assert "medium_activity_time" not in processed
+    assert "low_activity_time" not in processed
+
+
+def test_process_cardiovascular_age_pulse_wave_velocity():
+    """pulse_wave_velocity is populated when present in API response."""
+    coordinator = MockCoordinator()
+    data = {
+        "cardiovascular_age": {
+            "data": [{"vascular_age": 32, "pulse_wave_velocity": 7.2}]
+        }
+    }
+    processed = {}
+    coordinator._process_cardiovascular_age(data, processed)
+
+    assert processed["cardiovascular_age"] == 32
+    assert processed["pulse_wave_velocity"] == 7.2
+
+
+def test_process_cardiovascular_age_no_pulse_wave_velocity():
+    """pulse_wave_velocity absent from response doesn't populate key."""
+    coordinator = MockCoordinator()
+    data = {
+        "cardiovascular_age": {
+            "data": [{"vascular_age": 32}]
+        }
+    }
+    processed = {}
+    coordinator._process_cardiovascular_age(data, processed)
+
+    assert processed["cardiovascular_age"] == 32
+    assert "pulse_wave_velocity" not in processed
+
+
+def test_process_sleep_details_sorts_by_day():
+    """Most recent record by day wins even when API returns older record last."""
+    from datetime import datetime, timedelta, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date()
+    yesterday = (today - timedelta(days=1)).isoformat()
+    today_str = today.isoformat()
+
+    older_record = {
+        "day": yesterday,
+        "type": "long_sleep",
+        "bedtime_start": "2024-01-14T23:00:00+00:00",
+        "bedtime_end": "2024-01-15T07:00:00+00:00",
+    }
+    newer_record = {
+        "day": today_str,
+        "type": "long_sleep",
+        "bedtime_start": "2024-01-15T23:30:00+00:00",
+        "bedtime_end": "2024-01-16T07:30:00+00:00",
+    }
+    # API returns older record last — the sort should still pick the newer one
+    data = {"sleep_detail": {"data": [newer_record, older_record]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    assert processed["bedtime_start"] == datetime(2024, 1, 15, 23, 30, 0, tzinfo=timezone.utc)
+    assert processed["bedtime_end"] == datetime(2024, 1, 16, 7, 30, 0, tzinfo=timezone.utc)
+
+
+def test_process_sleep_details_ignores_records_older_than_2_days():
+    """Records older than 2 days are discarded; last-known values preserved."""
+    from datetime import datetime, timedelta, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date()
+    three_days_ago = (today - timedelta(days=3)).isoformat()
+
+    previous_start = datetime(2024, 1, 15, 23, 0, 0, tzinfo=timezone.utc)
+    previous_end = datetime(2024, 1, 16, 7, 0, 0, tzinfo=timezone.utc)
+    coordinator.data = {"bedtime_start": previous_start, "bedtime_end": previous_end}
+
+    stale_record = {
+        "day": three_days_ago,
+        "type": "long_sleep",
+        "bedtime_start": "2023-01-10T22:00:00+00:00",
+        "bedtime_end": "2023-01-11T06:00:00+00:00",
+    }
+    data = {"sleep_detail": {"data": [stale_record]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    # Stale record filtered → no completed records → fall back to previous data
+    assert processed.get("bedtime_start") == previous_start
+    assert processed.get("bedtime_end") == previous_end
+
+
+def test_process_heart_rate_sorts_by_timestamp():
+    """Out-of-order heart rate readings are sorted; most recent is current_heart_rate."""
+    from datetime import datetime, timedelta, timezone
+
+    coordinator = MockCoordinator()
+    now = datetime.now(timezone.utc)
+    t = lambda m: (now - timedelta(minutes=m)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+    # Provide readings out of order: oldest is last in list
+    data = {
+        "heartrate": {
+            "data": [
+                {"bpm": 70, "timestamp": t(10)},  # 10 min ago — should win
+                {"bpm": 80, "timestamp": t(0)},   # now — this is the latest
+                {"bpm": 65, "timestamp": t(20)},  # oldest
+            ]
+        }
+    }
+    processed = {}
+    coordinator._process_heart_rate(data, processed)
+
+    assert processed["current_heart_rate"] == 80
+
+
+def test_process_heart_rate_aggregates_last_24h():
+    """Aggregation uses only readings within the last 24 hours."""
+    from datetime import datetime, timedelta, timezone
+
+    coordinator = MockCoordinator()
+    now = datetime.now(timezone.utc)
+    recent_ts = (now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    old_ts = (now - timedelta(hours=30)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+    data = {
+        "heartrate": {
+            "data": [
+                {"bpm": 100, "timestamp": old_ts},   # outside 24h window
+                {"bpm": 60, "timestamp": recent_ts},  # inside 24h window
+            ]
+        }
+    }
+    processed = {}
+    coordinator._process_heart_rate(data, processed)
+
+    # current_heart_rate is still the most recent overall reading
+    assert processed["current_heart_rate"] == 60
+    # aggregation should only include the recent reading
+    assert processed["average_heart_rate"] == 60.0
+    assert processed["min_heart_rate"] == 60
+    assert processed["max_heart_rate"] == 60
+
+
+def test_process_heart_rate_fallback_to_last10_when_no_recent():
+    """When all readings are older than 24h, falls back to last 10 by position."""
+    from datetime import datetime, timedelta, timezone
+
+    coordinator = MockCoordinator()
+    now = datetime.now(timezone.utc)
+    old_ts = lambda m: (now - timedelta(hours=30 + m)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+    data = {
+        "heartrate": {
+            "data": [
+                {"bpm": 55, "timestamp": old_ts(0)},
+                {"bpm": 65, "timestamp": old_ts(1)},
+                {"bpm": 75, "timestamp": old_ts(2)},
+            ]
+        }
+    }
+    processed = {}
+    coordinator._process_heart_rate(data, processed)
+
+    # Falls back to last 10; current is most recent after sort
+    assert processed["current_heart_rate"] == 55  # smallest offset = most recent
+    assert processed["average_heart_rate"] == (55 + 65 + 75) / 3
