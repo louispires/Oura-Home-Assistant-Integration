@@ -207,10 +207,10 @@ class OuraApiClient:
             raise
 
     async def _async_get_spo2(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
-        """Get daily SpO2 (blood oxygen) data. Available for Gen3 and Oura Ring 4.
-        
+        """Get daily SpO2 (blood oxygen) data. Available for Gen3, Oura Ring 4, and Ring 5.
+
         Note: This endpoint may return 401 if the user hasn't authorized the spo2Daily scope
-        or if their ring doesn't support SpO2 (only Gen3 and Ring 4).
+        or if their ring doesn't support SpO2.
         """
         url = f"{API_BASE_URL}/daily_spo2"
         params = {
