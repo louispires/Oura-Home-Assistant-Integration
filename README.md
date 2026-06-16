@@ -12,14 +12,14 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - **Oura Ring 5 Compatible**: Fully tested with all Oura Ring generations including the latest Oura Ring 5
 - **OAuth2 Authentication**: Secure authentication using Home Assistant's application credentials
 - **Comprehensive Data**: 68 sensors and 2 binary sensors covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, battery, cardiovascular health, and more
-- **HA 2025.11 Compliant**: Modern entity naming, translation keys, entity categories, and proper state classes
+- **HA 2026 Compatible**: Modern entity naming, translation keys, entity categories, and proper state classes
 - **Historical Data Loading**: Automatically loads 3 months of historical data on first setup (configurable 1-48 months, up to 4 years)
 - **Expanded Daily Tracking**: Adds workout, mindfulness session, tag, and rest mode tracking with historical statistics support
 - **Entity Categories**: Diagnostic sensors properly categorized for better UI organization
 - **Multi-Account Support**: Entry-scoped unique IDs allow multiple Oura accounts
 - **HACS Compatible**: Easy installation and updates via HACS
 - **Modern Architecture**: Configuration-driven design following latest Home Assistant standards
-- **Comprehensive Testing**: 83 automated tests ensuring reliability
+- **Comprehensive Testing**: 105 automated tests ensuring reliability
 - **Efficient Updates**: Uses DataUpdateCoordinator with specialized processing methods
 
 ## Available Sensors
@@ -929,15 +929,14 @@ If you see rate limiting errors:
 This integration is built using modern Home Assistant patterns:
 
 - **OAuth2 Flow**: Uses Home Assistant's built-in OAuth2 implementation
-- **DataUpdateCoordinator**: Efficient data fetching with 12 specialized processing methods
+- **DataUpdateCoordinator**: Efficient data fetching with 18 specialized processing methods
 - **Configuration-Driven Design**: Maintainable, declarative structures throughout
 - **Modern Entity Standards**: `has_entity_name=True`, translation keys, entity categories
 - **Entry-Scoped IDs**: Multi-account support with proper unique ID scoping
 - **Type Hints**: Full type hint coverage for better code quality
 - **Async**: All operations are asynchronous
 - **Error Handling**: Comprehensive error handling and clean logging
-- **Test Coverage**: 45 automated tests with comprehensive fixtures
-- **Code Efficiency**: 51.5% code reduction in statistics module through refactoring
+- **Test Coverage**: 105 automated tests with comprehensive fixtures
 
 ## Contributing
 
@@ -951,6 +950,30 @@ Contributions are welcome! Please read our [Contributing Guide](docs/CONTRIBUTIN
 - **[Redirect URI Fix](docs/FIXING_REDIRECT_URI.md)** - OAuth redirect URI troubleshooting
 - **[Project Summary](docs/PROJECT_SUMMARY.md)** - Technical overview and architecture
 
+## Privacy & Data
+
+### What data is stored and where
+
+All Oura health data fetched by this integration is stored **locally in your Home Assistant instance only** — on your own hardware. No data is forwarded to any third-party service by this integration.
+
+- **Live sensor values** are held in Home Assistant's state machine (in memory).
+- **Historical statistics** (if enabled on first setup) are stored in Home Assistant's long-term statistics database, typically `home-assistant_v2.db` in your config directory.
+
+### Revoking access
+
+You can stop this integration from accessing your Oura data at any time by revoking the OAuth connection:
+
+1. **Revoke in Oura** — go to [Oura Cloud](https://cloud.ouraring.com) → Account → Connected Apps and remove the Home Assistant application. This immediately prevents any further API calls.
+2. **Remove in Home Assistant** — go to **Settings → Devices & Services → Oura Ring → Delete**. This removes the integration entry and its associated entities.
+
+> **Note:** Per [Oura's Privacy Policy](https://ouraring.com/privacy-policy), revoking OAuth access prevents *future* data transfers but does not automatically delete data that has already been received by a third party. If you want a complete removal, delete the integration entry in Home Assistant (step 2 above) after revoking — this clears all locally stored sensor history and long-term statistics associated with the integration.
+
+### Oura's Privacy Policy
+
+This integration accesses your personal health data using Oura's official v2 API under the permissions you grant during OAuth setup. Oura does not sell or rent personal data. For full details on how Oura handles your data, see the [Oura Privacy Policy](https://ouraring.com/privacy-policy). Questions about your Oura account data can be directed to [dataprotection@ouraring.com](mailto:dataprotection@ouraring.com).
+
+---
+
 ## License
 
 This project is licensed under the MIT License.
@@ -959,9 +982,9 @@ This project is licensed under the MIT License.
 
 - Original Oura Component: [nitobuendia/oura-custom-component](https://github.com/nitobuendia/oura-custom-component)
 - Oura Ring API: [Oura Cloud API Documentation](https://cloud.ouraring.com/v2/docs)
-- v2.0.0 Modernization: Comprehensive refactoring to HA 2025.11 standards
-- Test Infrastructure: Docker-based testing with 45 automated tests
-- Development assisted by: Claude Sonnet 4.5 (Anthropic AI)
+- v2.0.0 Modernization: Comprehensive refactoring to HA 2026 standards
+- Test Infrastructure: Docker-based testing with 105 automated tests
+- Development assisted by: Claude Sonnet 4.6 (Anthropic AI)
 
 ## Sponsoring
 

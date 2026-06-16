@@ -1,4 +1,27 @@
-﻿# TROUBLESHOOTING GUIDE - Integration Not Appearing
+﻿# Troubleshooting Guide
+
+## Removing the Integration & Your Data
+
+If you want to fully remove the integration and all locally stored Oura data from Home Assistant:
+
+### Step 1: Revoke OAuth access in Oura
+1. Go to [Oura Cloud](https://cloud.ouraring.com) → Account → Connected Apps
+2. Remove the Home Assistant application
+
+This immediately stops all future API calls. Per [Oura's Privacy Policy](https://ouraring.com/privacy-policy), revoking access prevents future data transfers but does not automatically delete data already stored locally.
+
+### Step 2: Delete the integration entry in Home Assistant
+1. Go to **Settings → Devices & Services**
+2. Find **Oura Ring** and click the three-dot menu → **Delete**
+3. Restart Home Assistant
+
+Deleting the entry removes all associated entities and clears the long-term statistics recorded by this integration from Home Assistant's database.
+
+> **Note:** If you only revoke OAuth in Oura (step 1) without deleting in HA (step 2), historical data already imported into Home Assistant's statistics database will remain on your local instance. Complete both steps for a full removal.
+
+---
+
+## Integration Not Appearing
 
 ## Issue: Oura Integration Not Showing in Home Assistant
 
