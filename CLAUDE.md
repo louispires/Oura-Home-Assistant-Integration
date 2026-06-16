@@ -21,7 +21,7 @@ docker compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor
 docker compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor.py::TestName::test_case -v
 ```
 
-Test image pinned to `homeassistant/home-assistant:2025.11`. Async throughout (`asyncio_mode = "auto"` in `pyproject.toml`).
+Test image pinned to `homeassistant/home-assistant:2026.6`. Async throughout (`asyncio_mode = "auto"` in `pyproject.toml`).
 
 No lint/format command is configured in this repo.
 
