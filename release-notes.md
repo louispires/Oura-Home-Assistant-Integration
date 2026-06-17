@@ -1,4 +1,22 @@
-﻿# 🛠️ Oura Ring v2 Integration v2.7.1 - Bedtime Sensor Stability Fix
+﻿# 🛠️ Oura Ring v2 Integration v2.8.1 - Current Heart Rate Freshness Fix
+
+## 🐛 BUG FIX IN v2.8.1
+
+### Current Heart Rate stuck on old data
+
+- **Fixed**: `sensor.oura_ring_current_heart_rate` showing a reading from the previous day instead of the most recent synced value.
+- **Fixed**: `sensor.oura_ring_heart_rate_timestamp` not advancing throughout the day.
+- `sensor.oura_ring_average_heart_rate`, `min_heart_rate`, and `max_heart_rate` were unaffected by this bug.
+
+**Root cause**: The Oura heart rate API is paginated (oldest-first). The integration never followed the `next_token` links, so it only consumed the first page of results — which contained readings from the beginning of the time window (prior day), not the most recent ones. Data visible in the Oura app was present in the API but unreachable beyond page 1.
+
+**Fix**: Added `_async_get_all_pages()` helper in `api.py` that follows `next_token` pagination until all pages are consumed. `_async_get_heartrate()` now uses this helper for both regular and batched (>30-day) fetches.
+
+**Verification**: A new `tests/live_heartrate_test.py` script lets you confirm freshness against your real Oura account using a Personal Access Token — run it any time to check data lag and page count.
+
+---
+
+# 🛠️ Oura Ring v2 Integration v2.7.1 - Bedtime Sensor Stability Fix
 
 ## 🐛 BUG FIXES IN v2.7.1
 

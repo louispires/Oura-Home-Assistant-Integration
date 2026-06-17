@@ -121,54 +121,39 @@ class OuraApiClient:
         return await self._async_get(url, params)
 
     async def _async_get_heartrate(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
-        """Get heart rate data.
-        
-        Note: The heartrate endpoint has a maximum range of 30 days.
-        For historical data requests, we'll batch the requests.
-        """
+        """Get heart rate data, following pagination and batching >30-day ranges."""
         url = f"{API_BASE_URL}/heartrate"
-        
-        # Calculate the number of days in the range
         days_range = (end_date - start_date).days
-        
-        # If range is > 30 days, batch the requests
+
         if days_range > 30:
-            all_data = []
+            all_data: list[Any] = []
             current_start = start_date
-            
             while current_start < end_date:
                 current_end = min(current_start + timedelta(days=30), end_date)
                 params = {
                     "start_datetime": f"{current_start.isoformat()}T00:00:00",
                     "end_datetime": f"{current_end.isoformat()}T23:59:59",
                 }
-                
                 try:
-                    batch_data = await self._async_get(url, params)
-                    if batch_data and "data" in batch_data:
-                        all_data.extend(batch_data["data"])
+                    batch = await self._async_get_all_pages(url, params)
+                    all_data.extend(batch)
                 except Exception as err:
                     _LOGGER.warning(
                         "Failed to fetch heart rate data for %s to %s: %s",
-                        current_start, current_end, err
+                        current_start, current_end, err,
                     )
-                
                 current_start = current_end + timedelta(days=1)
-            
             return {"data": all_data}
-        else:
-            # Range is 30 days or less, single request
-            params = {
-                "start_datetime": f"{start_date.isoformat()}T00:00:00",
-                "end_datetime": f"{end_date.isoformat()}T23:59:59",
-            }
-            
-            try:
-                return await self._async_get(url, params)
-            except Exception as err:
-                _LOGGER.debug("Heart rate endpoint failed: %s", err)
-                # Return empty data instead of failing completely
-                return {"data": []}
+
+        params = {
+            "start_datetime": f"{start_date.isoformat()}T00:00:00",
+            "end_datetime": f"{end_date.isoformat()}T23:59:59",
+        }
+        try:
+            return {"data": await self._async_get_all_pages(url, params)}
+        except Exception as err:
+            _LOGGER.debug("Heart rate endpoint failed: %s", err)
+            return {"data": []}
 
     async def _async_get_sleep_detail(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
         """Get detailed sleep data including HRV."""
@@ -358,6 +343,19 @@ class OuraApiClient:
             if err.status == 401:
                 return {"data": []}
             raise
+
+    async def _async_get_all_pages(self, url: str, params: dict[str, Any]) -> list[Any]:
+        """Fetch all pages for a paginated endpoint, following next_token links."""
+        all_data: list[Any] = []
+        current_params: dict[str, Any] = dict(params)
+        while True:
+            page = await self._async_get(url, current_params)
+            all_data.extend(page.get("data", []))
+            next_token = page.get("next_token")
+            if not next_token:
+                break
+            current_params = {"next_token": next_token}
+        return all_data
 
     async def _async_get(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make GET request to Oura API."""
