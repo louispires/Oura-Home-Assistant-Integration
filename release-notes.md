@@ -4,7 +4,7 @@
 
 ### Current Heart Rate stuck on old data
 
-- **Fixed**: `sensor.oura_ring_current_heart_rate` showing a reading from the previous day instead of the most recent synced value.
+- **Fixed**: `sensor.oura_ring_current_heart_rate` showing a reading from the previous day instead of the most recent synced value (resolves [#57](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/57)).
 - **Fixed**: `sensor.oura_ring_heart_rate_timestamp` not advancing throughout the day.
 - `sensor.oura_ring_average_heart_rate`, `min_heart_rate`, and `max_heart_rate` were unaffected by this bug.
 
