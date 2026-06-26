@@ -1,4 +1,49 @@
-﻿# 🛠️ Oura Ring v2 Integration v2.8.1 - Current Heart Rate Freshness Fix
+﻿# 🎉 Oura Ring v2 Integration v2.8.2 - Oura API v1.35 + Bedtime Fix
+
+## ✨ NEW IN v2.8.2
+
+### Oura API v1.35 Support
+
+**New sensor: Sleep Analysis Reason** (`sleep_analysis_reason`)
+
+- Exposes how Oura detected your sleep session: `foreground_sleep_analysis` (app sync), `background_sleep_analysis` (Ring 5 passive detection), `bedtime_edit` (manually adjusted), or `background_created_foreground_updated`.
+- **Entity category**: Diagnostic.
+- **Ring 5 note**: Background sleep analysis (new in API 1.35) allows the Ring 5 to detect and record sleep without requiring an Oura app sync first.
+
+**Ring hardware type display names**
+
+- `or5` hardware type now correctly displays as **"Oura Ring 5"** (previously rendered as "Oura Ring Or5" due to a `.capitalize()` bug).
+- `gen4` now displays as **"Oura Ring 4"** (was "Oura Ring Gen4").
+- Gen 1–3 now display with proper spacing (e.g., "Oura Ring Gen 3").
+- All known hardware types are handled via a lookup dict (`RING_MODEL_NAMES` in `const.py`); unknown future types fall back gracefully.
+
+**New ring color: `deep_rose`**
+
+- Added to the Oura Ring color enum in API 1.35. No code changes required — ring colors are passed through dynamically and are not validated by the integration.
+
+## 🐛 BUG FIX IN v2.8.2
+
+### Bedtime End shows afternoon/evening value just after midnight
+
+- **Fixed**: `sensor.oura_ring_bedtime_end` momentarily showing an incorrect afternoon or evening time (e.g., 17:14, 21:04, 18:04) just after midnight (~00:00:30) before correcting itself hours later to the proper morning wake-up time.
+
+**Root cause**: Oura's `/sleep` API can return multiple completed sleep records for the same `day` — for example, the main overnight sleep (ending ≈08:30) alongside an afternoon nap or brief rest session (ending ≈17:00 or later). The coordinator sorts records by `day` to pick the most recent, but when two records share the same `day` value Python's stable sort preserves the original API response order. If the API returned the shorter nap record last, `[-1]` selected it — causing the wrong `bedtime_end` to display.
+
+**Fix**: Added `total_sleep_duration` as a secondary sort key. Within the same calendar day, the record with the **longest duration** (the overnight sleep) is now always sorted last and selected. A new test (`test_bedtime_prefers_longest_sleep_for_same_day`) verifies this behaviour.
+
+## 📊 ENTITY COUNT UPDATE
+
+- **Previous version**: 68 sensors + 2 binary sensors
+- **This version**: 69 sensors + 2 binary sensors (+1 Sleep Analysis Reason diagnostic sensor)
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 106 automated tests passing (106, up from 105)
+- ✅ New test: `test_bedtime_prefers_longest_sleep_for_same_day`
+
+---
+
+# 🛠️ Oura Ring v2 Integration v2.8.1 - Current Heart Rate Freshness Fix
 
 ## 🐛 BUG FIX IN v2.8.1
 
