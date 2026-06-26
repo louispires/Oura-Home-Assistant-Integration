@@ -11,7 +11,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 
 - **Oura Ring 5 Compatible**: Fully tested with all Oura Ring generations including the latest Oura Ring 5
 - **OAuth2 Authentication**: Secure authentication using Home Assistant's application credentials
-- **Comprehensive Data**: 68 sensors and 2 binary sensors covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, battery, cardiovascular health, and more
+- **Comprehensive Data**: 69 sensors and 2 binary sensors covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, battery, cardiovascular health, and more
 - **HA 2026 Compatible**: Modern entity naming, translation keys, entity categories, and proper state classes
 - **Historical Data Loading**: Automatically loads 3 months of historical data on first setup (configurable 1-48 months, up to 4 years)
 - **Expanded Daily Tracking**: Adds workout, mindfulness session, tag, and rest mode tracking with historical statistics support
@@ -19,12 +19,12 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - **Multi-Account Support**: Entry-scoped unique IDs allow multiple Oura accounts
 - **HACS Compatible**: Easy installation and updates via HACS
 - **Modern Architecture**: Configuration-driven design following latest Home Assistant standards
-- **Comprehensive Testing**: 105 automated tests ensuring reliability
+- **Comprehensive Testing**: 106 automated tests ensuring reliability
 - **Efficient Updates**: Uses DataUpdateCoordinator with specialized processing methods
 
 ## Available Sensors
 
-### Sleep Sensors (16)
+### Sleep Sensors (17)
 - Sleep Score
 - Total Sleep Duration
 - Deep Sleep Duration
@@ -41,6 +41,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Bedtime Start (when you went to sleep)
 - Bedtime End (when you woke up)
 - Low Battery Alert
+- Sleep Analysis Reason (diagnostic: how sleep was detected — foreground app sync, background detection, or bedtime edit; Ring 5 supports background detection via API 1.35+)
 
 **Note**: Sleep Efficiency now uses the actual detailed sleep efficiency percentage from Oura sleep data rather than the contributor score.
 
@@ -98,7 +99,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 ### Fitness Sensors (3) - *Requires Oura membership*
 - VO2 Max ⚠️
 - Cardiovascular Age ⚠️
-- Pulse Wave Velocity (arterial stiffness in m/s, API 1.34+) ⚠️
+- Pulse Wave Velocity (arterial stiffness in m/s, API 1.35+) ⚠️
 
 ### Sleep Optimization Sensors (2) - *May be unavailable for new rings*
 - Optimal Bedtime Start ⚠️
@@ -131,7 +132,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Rest Mode
 - Ring Charging
 
-**Total: 68 sensors + 2 binary sensors**
+**Total: 69 sensors + 2 binary sensors**
 
 **Important Notes**:
 - Sensors marked with ⚠️ may be **unavailable** for new Oura Ring users (typically the first few weeks of usage). The Oura API does not provide data for these sensors until sufficient baseline data has been collected. This is normal behavior and they may become available over time as you continue using your ring.
@@ -936,7 +937,7 @@ This integration is built using modern Home Assistant patterns:
 - **Type Hints**: Full type hint coverage for better code quality
 - **Async**: All operations are asynchronous
 - **Error Handling**: Comprehensive error handling and clean logging
-- **Test Coverage**: 105 automated tests with comprehensive fixtures
+- **Test Coverage**: 106 automated tests with comprehensive fixtures
 
 ## Contributing
 
@@ -983,7 +984,7 @@ This project is licensed under the MIT License.
 - Original Oura Component: [nitobuendia/oura-custom-component](https://github.com/nitobuendia/oura-custom-component)
 - Oura Ring API: [Oura Cloud API Documentation](https://cloud.ouraring.com/v2/docs)
 - v2.0.0 Modernization: Comprehensive refactoring to HA 2026 standards
-- Test Infrastructure: Docker-based testing with 105 automated tests
+- Test Infrastructure: Docker-based testing with 106 automated tests
 - Development assisted by: Claude Sonnet 4.6 (Anthropic AI)
 
 ## Sponsoring

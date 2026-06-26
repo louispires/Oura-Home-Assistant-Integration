@@ -83,6 +83,7 @@
       "max_heart_rate": {"name": "Fréquence cardiaque maximale"},
       "heart_rate_timestamp": {"name": "Dernière mesure de fréquence cardiaque"},
       "average_sleep_hrv": {"name": "VFC moyenne pendant le sommeil"},
+      "sleep_analysis_reason": {"name": "Raison de l'analyse du sommeil"},
       "lowest_sleep_heart_rate": {"name": "Fréquence cardiaque la plus basse pendant le sommeil"},
       "average_sleep_heart_rate": {"name": "Fréquence cardiaque moyenne pendant le sommeil"},
       "stress_high_duration": {"name": "Durée de stress élevé"},

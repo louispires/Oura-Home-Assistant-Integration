@@ -859,6 +859,39 @@ def test_process_sleep_details_ignores_records_older_than_2_days():
     assert processed.get("bedtime_end") == previous_end
 
 
+def test_bedtime_prefers_longest_sleep_for_same_day():
+    """When two long_sleep records share the same day, the longest (overnight) sleep wins."""
+    from datetime import datetime, timedelta, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date()
+    yesterday = (today - timedelta(days=1)).isoformat()
+
+    # Overnight sleep (~8h): started previous evening, ended this morning
+    overnight = {
+        "day": yesterday,
+        "type": "long_sleep",
+        "bedtime_start": f"{(today - timedelta(days=2)).isoformat()}T22:30:00+00:00",
+        "bedtime_end": f"{yesterday}T07:30:00+00:00",
+        "total_sleep_duration": 28800,  # 8 hours
+    }
+    # Same-day nap (~1h): started and ended on the same calendar day
+    nap = {
+        "day": yesterday,
+        "type": "long_sleep",
+        "bedtime_start": f"{yesterday}T15:00:00+00:00",
+        "bedtime_end": f"{yesterday}T16:00:00+00:00",
+        "total_sleep_duration": 3600,  # 1 hour
+    }
+    # API returns nap AFTER overnight — without duration sort, nap would be picked
+    data = {"sleep_detail": {"data": [overnight, nap]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    # Overnight sleep (longer duration) must win
+    assert processed["bedtime_end"] == datetime.fromisoformat(f"{yesterday}T07:30:00+00:00")
+
+
 def test_process_heart_rate_sorts_by_timestamp():
     """Out-of-order heart rate readings are sorted; most recent is current_heart_rate."""
     from datetime import datetime, timedelta, timezone
