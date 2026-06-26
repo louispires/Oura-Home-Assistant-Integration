@@ -9,7 +9,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ATTRIBUTION, DOMAIN
+from .const import ATTRIBUTION, DOMAIN, RING_MODEL_NAMES
 from .coordinator import OuraDataUpdateCoordinator
 
 
@@ -19,7 +19,7 @@ def _oura_device_info(coordinator: OuraDataUpdateCoordinator) -> DeviceInfo:
     sw_version = None
     if coordinator.data:
         if hw_type := coordinator.data.get("ring_hardware_type"):
-            model = f"Oura Ring {hw_type.capitalize()}"
+            model = f"Oura Ring {RING_MODEL_NAMES.get(hw_type, hw_type.capitalize())}"
         sw_version = coordinator.data.get("ring_firmware_version")
     return DeviceInfo(
         identifiers={(DOMAIN, coordinator.entry.entry_id)},

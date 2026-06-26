@@ -6,6 +6,16 @@ from homeassistant.const import UnitOfEnergy, UnitOfLength, UnitOfTime
 from homeassistant.helpers.entity import EntityCategory
 
 DOMAIN: Final = "oura"
+
+# Ring hardware type → model display name
+RING_MODEL_NAMES: Final = {
+    "gen1": "Gen 1",
+    "gen2": "Gen 2",
+    "gen2m": "Gen 2M",
+    "gen3": "Gen 3",
+    "gen4": "4",
+    "or5": "5",
+}
 ATTRIBUTION: Final = "Data provided by Oura Ring"
 
 # Configuration
@@ -92,6 +102,7 @@ SENSOR_TYPES: Final = {
 
     # HRV sensors (from detailed sleep endpoint)
     "average_sleep_hrv": {"name": "Average Sleep HRV", "icon": "mdi:heart-pulse", "unit": "ms", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep_detail"},
+    "sleep_analysis_reason": {"name": "Sleep Analysis Reason", "icon": "mdi:sleep", "unit": None, "device_class": "enum", "state_class": None, "entity_category": EntityCategory.DIAGNOSTIC, "options": ["foreground_sleep_analysis", "bedtime_edit", "background_sleep_analysis", "background_created_foreground_updated"], "data_category": "sleep_detail"},
 
     # Stress sensors
     "stress_high_duration": {"name": "Stress High Duration", "icon": "mdi:account-question", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "stress"},

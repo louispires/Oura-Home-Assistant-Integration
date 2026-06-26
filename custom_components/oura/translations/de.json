@@ -83,6 +83,7 @@
       "max_heart_rate": {"name": "Maximale Herzfrequenz"},
       "heart_rate_timestamp": {"name": "Letzte Herzfrequenzmessung"},
       "average_sleep_hrv": {"name": "Durchschnittliche Schlaf-HRV"},
+      "sleep_analysis_reason": {"name": "Schlafanalysegrund"},
       "lowest_sleep_heart_rate": {"name": "Niedrigste Schlafherzfrequenz"},
       "average_sleep_heart_rate": {"name": "Durchschnittliche Schlafherzfrequenz"},
       "stress_high_duration": {"name": "Hohe Stressdauer"},

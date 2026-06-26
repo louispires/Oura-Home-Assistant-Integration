@@ -9,7 +9,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ATTRIBUTION, DOMAIN, SENSOR_TYPES
+from .const import ATTRIBUTION, DOMAIN, RING_MODEL_NAMES, SENSOR_TYPES
 from .coordinator import OuraDataUpdateCoordinator
 
 
@@ -64,7 +64,7 @@ class OuraSensor(CoordinatorEntity[OuraDataUpdateCoordinator], SensorEntity):
         sw_version = None
         if self.coordinator.data:
             if hw_type := self.coordinator.data.get("ring_hardware_type"):
-                model = f"Oura Ring {hw_type.capitalize()}"
+                model = f"Oura Ring {RING_MODEL_NAMES.get(hw_type, hw_type.capitalize())}"
             sw_version = self.coordinator.data.get("ring_firmware_version")
         return DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.entry.entry_id)},

@@ -332,10 +332,10 @@ class TestDeviceInfoEnrichment:
         return sensor
 
     def test_model_uses_hardware_type(self):
-        """device_info model is 'Oura Ring Gen4' when hardware_type=gen4."""
+        """device_info model maps hardware_type to a display name."""
         sensor = self._make_sensor_entity({"ring_hardware_type": "gen4", "ring_firmware_version": "2.8.10"})
         info = sensor.device_info
-        assert info["model"] == "Oura Ring Gen4"
+        assert info["model"] == "Oura Ring 4"
 
     def test_sw_version_uses_firmware_version(self):
         """device_info sw_version is set from ring firmware_version."""

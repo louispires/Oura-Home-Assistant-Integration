@@ -194,7 +194,10 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             r for r in completed
             if (self._parse_api_day(r.get("day")) or date.min) >= max_age
         ]
-        completed.sort(key=lambda r: self._parse_api_day(r.get("day")) or date.min)
+        completed.sort(key=lambda r: (
+            self._parse_api_day(r.get("day")) or date.min,
+            r.get("total_sleep_duration") or 0,
+        ))
 
         if completed:
             # Prefer long_sleep (main overnight sleep >3h) over naps when multiple
@@ -270,6 +273,10 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Low battery alert flag (always set, defaults to False)
         processed["low_battery_alert"] = latest_sleep_detail.get("low_battery_alert", False)
+
+        # Sleep analysis reason (how sleep was detected: foreground/background)
+        if reason := latest_sleep_detail.get("sleep_analysis_reason"):
+            processed["sleep_analysis_reason"] = reason
 
     def _process_readiness(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process readiness data (contributors are scores 1-100)."""
