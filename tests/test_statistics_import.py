@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from custom_components.oura.statistics import async_import_statistics
 from custom_components.oura.const import DOMAIN
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_import_statistics_entity_exists(mock_hass: HomeAssistant, mock_config_entry: ConfigEntry):
     """Test importing statistics when entity exists (uses recorder source)."""
     
@@ -48,7 +48,7 @@ async def test_import_statistics_entity_exists(mock_hass: HomeAssistant, mock_co
                 break
         assert found
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_import_statistics_entity_missing(mock_hass: HomeAssistant, mock_config_entry: ConfigEntry):
     """Test importing statistics when entity missing (uses recorder source with fallback ID)."""
     

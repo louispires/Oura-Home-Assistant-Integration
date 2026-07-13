@@ -1,4 +1,26 @@
-﻿# 🎉 Oura Ring v2 Integration v2.8.2 - Oura API v1.35 + Bedtime Fix
+﻿# 🐛 Oura Ring v2 Integration v2.8.3 - Show Most Recently Set Up Ring
+
+## 🐛 BUG FIX IN v2.8.3
+
+### Device info shows old ring model/firmware after upgrading to a new ring
+
+- **Fixed**: When a user has multiple ring configurations in their Oura account history (e.g. upgraded from a Gen 3 to an Oura Ring 5), the integration was showing the model and firmware version of an older ring instead of the currently active one ([#60](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/60)).
+
+**Root cause**: Oura's `/ring_configuration` API returns all rings ever set up on the account, not just the current one. The coordinator was taking the first entry in the response list (`ring_config_data[0]`), which is the oldest ring — not necessarily the one in active use.
+
+**Fix**: The coordinator now picks the ring with the **most recent `set_up_at` UTC timestamp**, which is always the currently active ring. Rings without a `set_up_at` value (older API records) fall back safely to the lowest possible timestamp so they are never selected over a ring with a known setup date.
+
+**Robustness improvement**: `_parse_iso_datetime` now always returns a UTC-aware `datetime`, safely normalising naive timestamps that could cause a `TypeError` when mixed with UTC-aware fallback values in the `max()` comparison.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 108 automated tests passing
+- ✅ New tests: `test_most_recent_config_used_for_multiple_rings` (order-independent, parametrized), `test_first_config_used_when_setup_timestamps_missing` (no-timestamp fallback), `test_naive_timestamp_beats_missing_timestamp` (naive datetime edge case)
+- ✅ Fixed async test infrastructure: replaced `pytest-asyncio` with `anyio` for Python 3.14 / pytest 9 compatibility
+
+---
+
+# 🎉 Oura Ring v2 Integration v2.8.2 - Oura API v1.35 + Bedtime Fix
 
 ## ✨ NEW IN v2.8.2
 

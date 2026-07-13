@@ -17,7 +17,7 @@ class _FrozenDateTime(datetime):
         return cls(2026, 3, 23, 1, 30, tzinfo=tz)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_async_get_data_uses_local_date_and_exclusive_end_date():
     """Test timezone-aware date range and +1 day exclusive end date handling."""
     hass = MagicMock()

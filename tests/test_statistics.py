@@ -221,7 +221,7 @@ def test_statistics_metadata_state_class_alignment():
         assert STATISTICS_METADATA[sensor_key]["has_sum"] is False
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_create_statistic_builds_cumulative_sum(mock_hass, mock_config_entry):
     """Test that has_sum sensors use sorted data points with cumulative sum."""
     data_points = [

@@ -13,6 +13,12 @@ from homeassistant.core import HomeAssistant
 from custom_components.oura.const import DOMAIN
 
 
+@pytest.fixture(params=["asyncio"])
+def anyio_backend():
+    """Use asyncio as the only anyio backend (HA is asyncio-only)."""
+    return "asyncio"
+
+
 @pytest.fixture
 def mock_config_entry() -> ConfigEntry:
     """Mock ConfigEntry for testing."""
