@@ -1,7 +1,7 @@
 """DataUpdateCoordinator for Oura Ring."""
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 import logging
 from typing import Any
 
@@ -599,7 +599,13 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Process ring configuration for device info enrichment."""
         if ring_config_data := data.get("ring_configuration", {}).get("data"):
             if ring_config_data and len(ring_config_data) > 0:
-                config = ring_config_data[0]
+                # Oura retains configurations for previously set up rings, so choose
+                # the newest setup instead of relying on response order.
+                config = max(
+                    ring_config_data,
+                    key=lambda item: self._parse_iso_datetime(item.get("set_up_at"))
+                    or datetime.min.replace(tzinfo=UTC),
+                )
                 processed["ring_hardware_type"] = config.get("hardware_type")
                 processed["ring_firmware_version"] = config.get("firmware_version")
                 processed["ring_color"] = config.get("color")
