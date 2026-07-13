@@ -169,14 +169,41 @@ class TestProcessRingConfiguration:
 
         assert "ring_hardware_type" not in processed
 
-    def test_first_config_used_for_multiple_rings(self):
-        """First ring configuration entry is used when multiple exist."""
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_most_recent_config_used_for_multiple_rings(self, reverse: bool):
+        """Most recently set up ring is used regardless of response order."""
+        coordinator = OuraDataUpdateCoordinator.__new__(OuraDataUpdateCoordinator)
+        ring_configs = [
+            {
+                "id": "ring-1",
+                "hardware_type": "gen4",
+                "firmware_version": "2.8.10",
+                "set_up_at": "2025-12-21T00:00:00.000Z",
+            },
+            {
+                "id": "ring-2",
+                "hardware_type": "or5",
+                "firmware_version": "2.1.3",
+                "set_up_at": "2026-07-08T00:00:00.000Z",
+            },
+        ]
+        if reverse:
+            ring_configs.reverse()
+        data = {"ring_configuration": {"data": ring_configs}}
+        processed = {}
+        coordinator._process_ring_configuration(data, processed)
+
+        assert processed["ring_hardware_type"] == "or5"
+        assert processed["ring_firmware_version"] == "2.1.3"
+
+    def test_first_config_used_when_setup_timestamps_missing(self):
+        """First ring remains the fallback when setup timestamps are unavailable."""
         coordinator = OuraDataUpdateCoordinator.__new__(OuraDataUpdateCoordinator)
         data = {
             "ring_configuration": {
                 "data": [
-                    {"id": "ring-1", "hardware_type": "gen4", "firmware_version": "2.8.10"},
-                    {"id": "ring-2", "hardware_type": "gen3", "firmware_version": "1.5.0"},
+                    {"id": "ring-1", "hardware_type": "gen4"},
+                    {"id": "ring-2", "hardware_type": "gen3"},
                 ]
             }
         }
@@ -184,6 +211,61 @@ class TestProcessRingConfiguration:
         coordinator._process_ring_configuration(data, processed)
 
         assert processed["ring_hardware_type"] == "gen4"
+
+    def test_naive_timestamp_beats_missing_timestamp(self):
+        """Naive setup timestamps are handled safely and preferred over missing values."""
+        coordinator = OuraDataUpdateCoordinator.__new__(OuraDataUpdateCoordinator)
+        data = {
+            "ring_configuration": {
+                "data": [
+                    {
+                        "id": "ring-1",
+                        "hardware_type": "gen4",
+                        "firmware_version": "2.8.10",
+                        "set_up_at": "2026-07-08T00:00:00",
+                    },
+                    {
+                        "id": "ring-2",
+                        "hardware_type": "gen3",
+                        "firmware_version": "2.1.3",
+                    },
+                ]
+            }
+        }
+        processed = {}
+
+        coordinator._process_ring_configuration(data, processed)
+
+        assert processed["ring_hardware_type"] == "gen4"
+        assert processed["ring_firmware_version"] == "2.8.10"
+
+    def test_invalid_timestamp_falls_back_without_crashing(self):
+        """Malformed setup timestamps are ignored instead of breaking selection."""
+        coordinator = OuraDataUpdateCoordinator.__new__(OuraDataUpdateCoordinator)
+        data = {
+            "ring_configuration": {
+                "data": [
+                    {
+                        "id": "ring-1",
+                        "hardware_type": "gen3",
+                        "firmware_version": "2.1.3",
+                        "set_up_at": "not-a-datetime",
+                    },
+                    {
+                        "id": "ring-2",
+                        "hardware_type": "gen4",
+                        "firmware_version": "2.8.10",
+                        "set_up_at": "2026-07-08T00:00:00.000Z",
+                    },
+                ]
+            }
+        }
+        processed = {}
+
+        coordinator._process_ring_configuration(data, processed)
+
+        assert processed["ring_hardware_type"] == "gen4"
+        assert processed["ring_firmware_version"] == "2.8.10"
 
 
 # ---------------------------------------------------------------------------
@@ -331,11 +413,22 @@ class TestDeviceInfoEnrichment:
         sensor._sensor_type = sensor_type
         return sensor
 
-    def test_model_uses_hardware_type(self):
+    @pytest.mark.parametrize(
+        ("hardware_type", "expected_model"),
+        [("gen4", "Oura Ring 4"), ("or5", "Oura Ring 5")],
+    )
+    def test_model_uses_hardware_type(
+        self, hardware_type: str, expected_model: str
+    ):
         """device_info model maps hardware_type to a display name."""
-        sensor = self._make_sensor_entity({"ring_hardware_type": "gen4", "ring_firmware_version": "2.8.10"})
+        sensor = self._make_sensor_entity(
+            {
+                "ring_hardware_type": hardware_type,
+                "ring_firmware_version": "2.8.10",
+            }
+        )
         info = sensor.device_info
-        assert info["model"] == "Oura Ring 4"
+        assert info["model"] == expected_model
 
     def test_sw_version_uses_firmware_version(self):
         """device_info sw_version is set from ring firmware_version."""
