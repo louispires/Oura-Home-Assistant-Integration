@@ -102,6 +102,9 @@ class OuraSensor(CoordinatorEntity[OuraDataUpdateCoordinator], SensorEntity):
         if self._sensor_type.startswith("last_workout_") and "_last_workout_raw" in self.coordinator.data:
             attrs["workout"] = self.coordinator.data["_last_workout_raw"]
 
+        if self._sensor_type == "workouts_today" and "_workouts_today_list" in self.coordinator.data:
+            attrs["workouts"] = self.coordinator.data["_workouts_today_list"]
+
         return attrs or None
 
     @property
