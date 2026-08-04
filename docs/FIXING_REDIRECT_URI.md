@@ -5,99 +5,34 @@
 Home Assistant is sending:
 - redirect_uri: https://my.home-assistant.io/redirect/oauth
 
-But your Oura application only has:
-- redirect_uri: https://homeassistant.mydomain.com/auth/external/callback
+But your Oura application only has a different URI registered (e.g. your own domain or IP).
 
-When you access Home Assistant through https://my.home-assistant.io, it uses the My Home Assistant redirect service.
+This integration always uses `https://my.home-assistant.io/redirect/oauth` as the redirect URI during OAuth — unconditionally, regardless of whether you're accessing Home Assistant via your local IP, a custom domain, Nabu Casa, or DuckDNS. It does not use your Home Assistant's own URL.
 
 ## The Solution
 
-You need to add BOTH redirect URIs to your Oura application:
+Register `https://my.home-assistant.io/redirect/oauth` as the Redirect URI in your Oura application. That is the only URI this integration will ever send — you do not need to register your own HA URL.
 
 ### Step 1: Update Your Oura Application
 
 1. Go to: https://developer.ouraring.com/applications
 2. Find your Home Assistant application
 3. Click Edit
-4. Update the Redirect URI field to include BOTH:
+4. Set the Redirect URI to:
 
-**Option A: If it allows multiple URIs (comma or space separated):**
-`
-https://homeassistant.mydomain.com/auth/external/callback
+```
 https://my.home-assistant.io/redirect/oauth
-`
+```
 
-**Option B: If it only allows one URI, use:**
-`
-https://my.home-assistant.io/redirect/oauth
-`
-
-This is the recommended option because it works from anywhere.
+> **Note:** Oura's developer portal does not accept non-localhost `http://` URIs (e.g. `http://192.168.1.100:8123/...`). Use the `https://my.home-assistant.io/redirect/oauth` URI above — it works for all Home Assistant setups regardless of whether you access HA locally, via Nabu Casa, or via a custom domain.
 
 ### Step 2: How to Access Your Home Assistant
 
-When configuring the integration, make sure you're accessing Home Assistant via:
+You can access Home Assistant however you normally do — the integration sends `https://my.home-assistant.io/redirect/oauth` unconditionally, so there is no need to access HA through my.home-assistant.io specifically. Your direct URL, local IP, Nabu Casa link, or DuckDNS URL all work.
 
-**Option A: Direct URL (if you added both URIs)**
-- Access HA at: https://homeassistant.mydomain.com
-- This will use: https://homeassistant.mydomain.com/auth/external/callback
-
-**Option B: My Home Assistant (recommended)**
-- Access HA at: https://my.home-assistant.io
-- This will use: https://my.home-assistant.io/redirect/oauth
-- This works from anywhere, even outside your network
-
-### Step 3: In Your Oura Application Settings
-
-Your Oura application should look like this:
-
-**Application Name:** Home Assistant
-
-**Website URL:** https://homeassistant.mydomain.com
-
-**Redirect URI:** 
-- If multiple allowed: Both URLs above
-- If single only: https://my.home-assistant.io/redirect/oauth
-
-**Scopes:** Select all:
-- ✅ email
-- ✅ personal  
-- ✅ daily
-- ✅ heartrate
-- ✅ workout
-- ✅ session
-- ✅ tag
-- ✅ spo2
-- ✅ ring_configuration
-- ✅ stress
-- ✅ heart_health
-
-### Step 4: After Updating Oura
+### Step 3: After Updating Oura
 
 1. Save your changes in Oura Cloud
 2. Go back to Home Assistant
-3. Settings  Devices & Services
-4. Try adding the Oura Ring integration again
-5. It should now redirect properly
-
-## Alternative: Access HA Directly
-
-If you want to use your direct URL instead of my.home-assistant.io:
-
-1. Make sure Oura has: https://homeassistant.mydomain.com/auth/external/callback
-2. Access Home Assistant at: https://homeassistant.mydomain.com (NOT through my.home-assistant.io)
-3. Then add the integration
-
-## Which Method to Choose?
-
-**Use my.home-assistant.io redirect** if:
--  You access HA from different networks
--  You want it to work everywhere
--  You use Nabu Casa
-
-**Use direct URL** if:
--  You only access HA from home network
--  You have a stable external URL
--  You prefer direct connection
-
-**Best Practice:** Add BOTH redirect URIs to Oura so it works either way!
+3. Settings → Devices & Services
+4. Try adding the Oura Ring integration again (or reauthenticate if it was previously set up)

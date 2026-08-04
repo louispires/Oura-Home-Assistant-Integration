@@ -74,11 +74,9 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
    - Use your actual Home Assistant URL
    - Can be local (http://192.168.1.100:8123) or external (https://ha.example.com)
    
-   **Redirect URI**: `https://your-home-assistant-url.com/auth/external/callback`
-   - **CRITICAL**: This must match exactly with your Home Assistant URL
-   - If using Nabu Casa: `https://abcdef123456.ui.nabu.casa/auth/external/callback`
-   - If using DuckDNS: `https://yourdomain.duckdns.org/auth/external/callback`
-   - Local network: `http://192.168.1.100:8123/auth/external/callback`
+   **Redirect URI**: `https://my.home-assistant.io/redirect/oauth`
+   - This integration always uses Home Assistant's built-in "My Home Assistant" redirect relay for OAuth, regardless of whether your instance is local-only, on Nabu Casa, or on DuckDNS/a custom domain.
+   - You do not need to register your own local IP, hostname, or Nabu Casa/DuckDNS URL as the Redirect URI — only the URL above. Note: Oura's developer portal will not accept non-localhost `http://` URIs, so a local IP such as `http://192.168.1.100:8123/...` cannot be registered there anyway.
    
    **Application Scope**: Select all available scopes:
    - `email`
@@ -197,16 +195,9 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 
 ### OAuth Error: Invalid Redirect URI
 
-**Problem**: "redirect_uri_mismatch" or similar error
+**Problem**: "redirect_uri_mismatch" or similar error during OAuth authorization
 
-**Solutions**:
-1. Verify Redirect URI in Oura Cloud matches **exactly**:
-   - Check protocol (http vs https)
-   - Check domain/IP
-   - Check port number
-   - Must end with `/auth/external/callback`
-2. No trailing slashes in the base URL
-3. If using Nabu Casa, use the full Nabu Casa URL
+**Solution**: Register `https://my.home-assistant.io/redirect/oauth` as the Redirect URI in your Oura application at [developer.ouraring.com/applications](https://developer.ouraring.com/applications). This integration always sends this exact URI during OAuth, regardless of how your Home Assistant instance is accessed (local IP, Nabu Casa, DuckDNS, or any other domain). Note: Oura's developer portal will not accept non-localhost `http://` URIs, so a local IP address cannot be registered there.
 
 ### Authentication Failed
 

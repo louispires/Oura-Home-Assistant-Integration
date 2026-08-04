@@ -416,7 +416,11 @@ def test_empty_data_handling():
 
     # Should return dict with default values without errors
     assert isinstance(processed, dict)
-    assert processed == {"rest_mode_active": False, "workouts_today": 0}
+    assert processed == {
+        "rest_mode_active": False,
+        "workouts_today": 0,
+        "_workouts_today_list": [],
+    }
 
 
 def test_process_workout_data():
@@ -445,11 +449,87 @@ def test_process_workout_data():
     coordinator._process_workout(data, processed)
 
     assert processed["workouts_today"] == 1
+    assert processed["_workouts_today_list"] == data["workout"]["data"]
     assert processed["last_workout_type"] == "running"
     assert processed["last_workout_distance"] == 5000
     assert processed["last_workout_calories"] == 320
     assert processed["last_workout_intensity"] == "moderate"
     assert processed["last_workout_duration"] == 30
+
+
+def test_process_workout_multiple_today():
+    """Test that all of today's workouts are exposed, not just the latest."""
+    from datetime import datetime, timedelta, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
+    yesterday = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+    strength = {
+        "day": today,
+        "activity": "strength_training",
+        "calories": 250,
+        "intensity": "hard",
+        "start_datetime": f"{today}T06:00:00+00:00",
+        "end_datetime": f"{today}T06:45:00+00:00",
+    }
+    cycling = {
+        "day": today,
+        "activity": "cycling",
+        "distance": 15000,
+        "calories": 400,
+        "intensity": "moderate",
+        "start_datetime": f"{today}T07:00:00+00:00",
+        "end_datetime": f"{today}T08:00:00+00:00",
+    }
+    data = {
+        "workout": {
+            "data": [
+                {
+                    "day": yesterday,
+                    "activity": "walking",
+                    "start_datetime": f"{yesterday}T18:00:00+00:00",
+                    "end_datetime": f"{yesterday}T18:30:00+00:00",
+                },
+                strength,
+                cycling,
+            ]
+        }
+    }
+
+    processed = {}
+    coordinator._process_workout(data, processed)
+
+    assert processed["workouts_today"] == 2
+    assert processed["_workouts_today_list"] == [strength, cycling]
+    assert processed["last_workout_type"] == "cycling"
+
+
+def test_process_workout_none_today():
+    """Test that the count and list are empty when all workouts are from earlier days."""
+    from datetime import datetime, timedelta, timezone
+
+    coordinator = MockCoordinator()
+    yesterday = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+    # The API window still contains yesterday's workout just after midnight
+    data = {
+        "workout": {
+            "data": [
+                {
+                    "day": yesterday,
+                    "activity": "walking",
+                    "start_datetime": f"{yesterday}T18:00:00+00:00",
+                    "end_datetime": f"{yesterday}T18:30:00+00:00",
+                }
+            ]
+        }
+    }
+
+    processed = {}
+    coordinator._process_workout(data, processed)
+
+    assert processed["workouts_today"] == 0
+    assert processed["_workouts_today_list"] == []
+    assert processed["last_workout_type"] == "walking"
 
 
 def test_process_workout_preserves_last_values():
@@ -471,6 +551,7 @@ def test_process_workout_preserves_last_values():
     coordinator._process_workout(data, processed)
 
     assert processed["workouts_today"] == 0
+    assert processed["_workouts_today_list"] == []
     assert processed["last_workout_type"] == "cycling"
     assert processed["last_workout_distance"] == 10000
     assert processed["last_workout_calories"] == 500
@@ -489,6 +570,7 @@ def test_process_workout_no_previous_data():
     coordinator._process_workout(data, processed)
 
     assert processed["workouts_today"] == 0
+    assert processed["_workouts_today_list"] == []
     assert "last_workout_type" not in processed
     assert "last_workout_distance" not in processed
     assert "last_workout_calories" not in processed

@@ -1,4 +1,45 @@
-﻿# 🐛 Oura Ring v2 Integration v2.8.3 - Show Most Recently Set Up Ring
+﻿# Oura Ring v2 Integration v2.8.4
+
+## 🐛 BUG FIX IN v2.8.4
+
+### Integration no longer prompts to reauthenticate when OAuth token refresh is rejected
+
+- **Fixed**: When Oura's token endpoint rejects a refresh token (HTTP 400), the integration was silently re-serving stale cached data forever instead of surfacing HA's "Reauthenticate" prompt ([#61](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/61), [#64](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/64)).
+
+**Root cause (two-layer bug)**:
+1. `asyncio.gather(..., return_exceptions=True)` in `api.py` swallowed `OAuth2TokenRequestReauthError` the same as any ordinary per-endpoint failure — logging it at DEBUG and substituting empty data — so it never reached `coordinator.py` at all.
+2. Even if it had reached the coordinator, the blanket `except Exception` handler there would have taken the `if self.data: return self.data` branch (silently treating the update as successful) rather than raising `ConfigEntryAuthFailed`.
+
+**Fix**: `api.py` now scans gathered results for `OAuth2TokenRequestReauthError` and re-raises it before the per-endpoint swallow loop. `coordinator.py` catches it specifically and raises `ConfigEntryAuthFailed`, which triggers HA's reauth UI. All other exception handling (network errors, 401s on optional/scope-limited endpoints) is unchanged.
+
+**Confirmed**: The fix was validated by an affected user — the "Reauthenticate" prompt appeared on the next update cycle and completing the flow restored the integration ([#61](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/61)).
+
+## ✨ NEW IN v2.8.4
+
+### `workouts_today` sensor now exposes today's full workout list as an attribute
+
+- **New attribute** `workouts` on `sensor.oura_ring_workouts_today`: the complete list of today's workouts as returned by the Oura API, including `activity`, `day`, `start_datetime`, `end_datetime`, `intensity`, `source`, and (when present) `label`, `calories`, and `distance` ([#63](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/63)).
+- The sensor **state** (count) is unchanged.
+- Resets to an empty list when no workouts are recorded for today, consistent with the count resetting to 0.
+- Follows the existing `_last_workout_raw` / `workout` attribute pattern used by `last_workout_*` sensors, and the `_tags_today_list` / `tags` pattern on `tags_today`.
+- **Use case**: automations and dashboards that need to distinguish between multiple workouts in a day (e.g. a strength session followed by a ride) can now read the full list rather than just the count or the most recent entry.
+
+## 📄 DOCUMENTATION IN v2.8.4
+
+### Redirect URI setup instructions corrected ([#62](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/62))
+
+- `docs/INSTALLATION.md` Step 2 previously told users to register their own HA URL (`https://your-ha.../auth/external/callback`) as the Oura Redirect URI. This integration always sends `https://my.home-assistant.io/redirect/oauth` unconditionally — the previous instructions were both wrong and, for plain `http://` local IPs, not even accepted by Oura's developer portal.
+- `docs/FIXING_REDIRECT_URI.md` previously described the relay as conditional on how you access HA, and offered a confusing two-URI "Option A/B". Rewritten to state the behaviour correctly and removed the stale "Alternative: Access HA Directly" section.
+- The "OAuth Error: Invalid Redirect URI" troubleshooting entry in `INSTALLATION.md` updated to give a direct, correct answer.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 113 automated tests passing (up from 108 in v2.8.3)
+- ✅ New tests: `test_process_workout_multiple_today`, `test_process_workout_none_today`, `test_workouts_today_sensor_exposes_workout_list`, `test_workouts_attribute_not_on_other_sensors`, `test_workouts_today_sensor_without_list`
+
+---
+
+# 🐛 Oura Ring v2 Integration v2.8.3 - Show Most Recently Set Up Ring
 
 ## 🐛 BUG FIX IN v2.8.3
 
