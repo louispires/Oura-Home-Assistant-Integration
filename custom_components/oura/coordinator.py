@@ -478,6 +478,7 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if self._parse_api_day(workout.get("day")) == today
                 ]
                 processed["workouts_today"] = len(today_workouts)
+                processed["_workouts_today_list"] = today_workouts
 
                 latest_workout = workout_data[-1]
                 processed["last_workout_type"] = latest_workout.get("activity")
@@ -497,6 +498,7 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # No workout data in current API window — carry forward previous values
         processed["workouts_today"] = 0
+        processed["_workouts_today_list"] = []
         if self.data:
             for key in self._LAST_WORKOUT_KEYS:
                 if key in self.data:
