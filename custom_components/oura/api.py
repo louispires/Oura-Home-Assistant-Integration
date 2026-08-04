@@ -9,7 +9,10 @@ from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession, ClientResponseError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
+from homeassistant.helpers.config_entry_oauth2_flow import (
+    OAuth2Session,
+    OAuth2TokenRequestReauthError,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
@@ -71,6 +74,14 @@ class OuraApiClient:
             *(getattr(self, method_name)(start_date, end_date) for method_name in API_ENDPOINTS.values()),
             return_exceptions=True,
         )
+
+        # A rejected refresh_token fails every endpoint identically, and each one
+        # would otherwise be swallowed below as an ordinary per-endpoint outage
+        # (data[key] = {}), which hides the fact that reauthentication is needed.
+        # Propagate it so the coordinator can convert it into ConfigEntryAuthFailed.
+        for result in results:
+            if isinstance(result, OAuth2TokenRequestReauthError):
+                raise result
 
         data: dict[str, Any] = {}
         failed_endpoints = 0

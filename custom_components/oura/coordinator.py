@@ -7,6 +7,8 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.config_entry_oauth2_flow import OAuth2TokenRequestReauthError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -61,11 +63,25 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             return processed_data
 
+        except OAuth2TokenRequestReauthError as err:
+            # Oura's token endpoint rejected our refresh_token (HTTP 4xx from
+            # /oauth/token). The credentials are no longer valid — falling through to
+            # the generic handler below would silently keep serving stale data forever,
+            # since HA never gets the chance to raise the "Reauthenticate" UI prompt.
+            _LOGGER.warning(
+                "Oura token refresh rejected by the API (reauthentication required): %s",
+                err,
+            )
+            raise ConfigEntryAuthFailed(
+                f"Oura token refresh was rejected, reauthentication required: {err}"
+            ) from err
+
         except Exception as err:
             # Log the error but keep existing data to maintain sensor states
             # This handles transient network issues gracefully
             _LOGGER.warning(
-                "Error communicating with API (will retry in %s minutes): %s",
+                "Error communicating with API (%s) (will retry in %s minutes): %s",
+                type(err).__name__,
                 self.update_interval.total_seconds() / 60,
                 err
             )
