@@ -148,6 +148,11 @@ class OuraApiClient:
                 try:
                     batch = await self._async_get_all_pages(url, params)
                     all_data.extend(batch)
+                except OAuth2TokenRequestReauthError:
+                    # A rejected refresh token is not a per-batch outage: it
+                    # must reach async_get_data so the coordinator can raise
+                    # ConfigEntryAuthFailed, as the comment there states.
+                    raise
                 except Exception as err:
                     _LOGGER.warning(
                         "Failed to fetch heart rate data for %s to %s: %s",
@@ -162,6 +167,8 @@ class OuraApiClient:
         }
         try:
             return {"data": await self._async_get_all_pages(url, params)}
+        except OAuth2TokenRequestReauthError:
+            raise
         except Exception as err:
             _LOGGER.debug("Heart rate endpoint failed: %s", err)
             return {"data": []}
