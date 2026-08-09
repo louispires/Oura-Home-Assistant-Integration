@@ -11,11 +11,30 @@ from datetime import date
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from aiohttp import RequestInfo
 from homeassistant.helpers.config_entry_oauth2_flow import (
     OAuth2TokenRequestReauthError,
 )
+from multidict import CIMultiDict, CIMultiDictProxy
+from yarl import URL
 
 from custom_components.oura.api import OuraApiClient
+
+_TOKEN_URL = URL("https://api.ouraring.com/oauth/token")
+
+
+def _reauth_error() -> OAuth2TokenRequestReauthError:
+    """Build a real one -- it subclasses ClientResponseError and needs the lot.
+
+    Raising the bare class instead would blow up as a TypeError, which the
+    broad `except` absorbs, and the test would pass for the wrong reason.
+    """
+    request_info = RequestInfo(
+        _TOKEN_URL, "POST", CIMultiDictProxy(CIMultiDict()), _TOKEN_URL
+    )
+    return OAuth2TokenRequestReauthError(
+        domain="oura", request_info=request_info, history=(), status=400
+    )
 
 
 def _client() -> OuraApiClient:
@@ -28,7 +47,7 @@ def _client() -> OuraApiClient:
 async def test_reauth_escapes_the_batched_path():
     """Ranges over 30 days go through the batching loop."""
     client = _client()
-    client._async_get_all_pages = AsyncMock(side_effect=OAuth2TokenRequestReauthError)
+    client._async_get_all_pages = AsyncMock(side_effect=_reauth_error())
 
     with pytest.raises(OAuth2TokenRequestReauthError):
         await client._async_get_heartrate(date(2026, 1, 1), date(2026, 3, 31))
@@ -38,7 +57,7 @@ async def test_reauth_escapes_the_batched_path():
 async def test_reauth_escapes_the_short_path():
     """Ranges of 30 days or less skip the loop entirely."""
     client = _client()
-    client._async_get_all_pages = AsyncMock(side_effect=OAuth2TokenRequestReauthError)
+    client._async_get_all_pages = AsyncMock(side_effect=_reauth_error())
 
     with pytest.raises(OAuth2TokenRequestReauthError):
         await client._async_get_heartrate(date(2026, 3, 1), date(2026, 3, 15))
@@ -81,7 +100,7 @@ async def test_reauth_reaches_async_get_data_through_the_gather():
         "_async_get_ring_battery_level", "_async_get_ring_configuration",
     ):
         setattr(client, name, AsyncMock(return_value={"data": []}))
-    client._async_get_all_pages = AsyncMock(side_effect=OAuth2TokenRequestReauthError)
+    client._async_get_all_pages = AsyncMock(side_effect=_reauth_error())
 
     with pytest.raises(OAuth2TokenRequestReauthError):
         await client.async_get_data(days_back=90)
