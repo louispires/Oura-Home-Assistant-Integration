@@ -70,7 +70,8 @@ async def test_an_ordinary_failure_is_still_absorbed():
     client._async_get_all_pages = AsyncMock(side_effect=TimeoutError("upstream down"))
 
     assert await client._async_get_heartrate(date(2026, 3, 1), date(2026, 3, 15)) == {
-        "data": []
+        "data": [],
+        "_heartrate_fetch_failed": True,
     }
 
 
@@ -84,7 +85,10 @@ async def test_an_ordinary_failure_is_still_absorbed_when_batching():
 
     result = await client._async_get_heartrate(date(2026, 1, 1), date(2026, 3, 31))
 
-    assert result == {"data": [{"bpm": 60}, {"bpm": 61}]}
+    assert result == {
+        "data": [{"bpm": 60}, {"bpm": 61}],
+        "_heartrate_fetch_failed": True,
+    }
 
 
 @pytest.mark.anyio

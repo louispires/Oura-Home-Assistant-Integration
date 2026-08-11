@@ -1,4 +1,29 @@
-﻿# Oura Ring v2 Integration v2.8.4
+﻿# Oura Ring v2 Integration v2.8.5
+
+## 🐛 BUG FIXES IN v2.8.5
+
+### Heart rate endpoint now properly triggers reauthentication on rejected refresh token
+
+- **Fixed**: A rejected OAuth refresh token (`OAuth2TokenRequestReauthError`) in the heart-rate endpoint could be absorbed as an ordinary endpoint outage instead of propagating to Home Assistant reauth handling ([#66](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/66), [#67](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/67)).
+- **Fix**: Reauth exceptions are now explicitly re-raised from both heart-rate fetch paths (batched and non-batched), allowing the coordinator to raise `ConfigEntryAuthFailed` and surface Home Assistant's reauthentication flow.
+
+### Heart-rate outages are now included in endpoint failure connectivity counts
+
+- **Fixed**: When the heart-rate endpoint failed with non-auth errors, it returned fallback data and was omitted from `failed_endpoints` warning counts, causing underreported values like `17/18` during broad outages.
+- **Fix**: Heart-rate fetch fallback behavior is preserved for data-shape stability, but absorbed heart-rate outages are now flagged internally and counted in aggregate connectivity warnings.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ Full Docker suite passing: **119 tests passed**
+- ✅ Added focused coverage for:
+  - reauth propagation from batched heart-rate fetch
+  - reauth propagation from short-range heart-rate fetch
+  - preserved fallback behavior for non-auth heart-rate failures
+  - aggregate outage counting that now includes absorbed heart-rate failures
+
+---
+
+# Oura Ring v2 Integration v2.8.4
 
 ## 🐛 BUG FIX IN v2.8.4
 

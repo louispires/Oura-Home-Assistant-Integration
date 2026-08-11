@@ -30,7 +30,7 @@ No lint/format command is configured in this repo.
 ```
 custom_components/oura/
 ├── __init__.py                  # Setup: OAuth2 session → OuraApiClient → Coordinator → forward platforms
-├── api.py                       # OuraApiClient: 16 endpoints fetched in parallel via asyncio.gather
+├── api.py                       # OuraApiClient: 18 endpoints fetched in parallel via asyncio.gather
 ├── coordinator.py               # OuraDataUpdateCoordinator: modular _process_* methods per data category
 ├── sensor.py                    # OuraSensor: CoordinatorEntity, driven by SENSOR_TYPES dict
 ├── binary_sensor.py             # Rest mode + ring charging binary sensors

@@ -20,6 +20,8 @@ from .const import API_BASE_URL
 
 _LOGGER = logging.getLogger(__name__)
 
+_HEARTRATE_FAILED_MARKER = "_heartrate_fetch_failed"
+
 API_ENDPOINTS: dict[str, str] = {
     "sleep": "_async_get_sleep",
     "readiness": "_async_get_readiness",
@@ -93,6 +95,12 @@ class OuraApiClient:
                 _LOGGER.debug("Error fetching %s data: %s", key, result)
                 data[key] = {}
             else:
+                # Heart-rate fetches intentionally absorb non-auth errors to
+                # preserve shape for downstream consumers. Count those absorbed
+                # failures here for connectivity diagnostics.
+                if isinstance(result, dict) and result.pop(_HEARTRATE_FAILED_MARKER, False):
+                    failed_endpoints += 1
+                    _LOGGER.debug("Error fetching %s data: one or more requests failed", key)
                 data[key] = result
 
         if failed_endpoints >= total_endpoints * 0.5:
@@ -138,6 +146,7 @@ class OuraApiClient:
 
         if days_range > 30:
             all_data: list[Any] = []
+            had_outage = False
             current_start = start_date
             while current_start < end_date:
                 current_end = min(current_start + timedelta(days=30), end_date)
@@ -154,12 +163,16 @@ class OuraApiClient:
                     # ConfigEntryAuthFailed, as the comment there states.
                     raise
                 except Exception as err:
+                    had_outage = True
                     _LOGGER.warning(
                         "Failed to fetch heart rate data for %s to %s: %s",
                         current_start, current_end, err,
                     )
                 current_start = current_end + timedelta(days=1)
-            return {"data": all_data}
+            result: dict[str, Any] = {"data": all_data}
+            if had_outage:
+                result[_HEARTRATE_FAILED_MARKER] = True
+            return result
 
         params = {
             "start_datetime": f"{start_date.isoformat()}T00:00:00",
@@ -171,7 +184,7 @@ class OuraApiClient:
             raise
         except Exception as err:
             _LOGGER.debug("Heart rate endpoint failed: %s", err)
-            return {"data": []}
+            return {"data": [], _HEARTRATE_FAILED_MARKER: True}
 
     async def _async_get_sleep_detail(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
         """Get detailed sleep data including HRV."""
