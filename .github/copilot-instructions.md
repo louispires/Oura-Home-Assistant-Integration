@@ -7,7 +7,7 @@ Home Assistant custom integration for Oura Ring (v2 API, OAuth2). Domain: `oura`
 ```
 custom_components/oura/
 ├── __init__.py          # Entry setup: OAuth2 session → API client → Coordinator → platforms
-├── api.py               # OuraApiClient: 16 endpoints fetched in parallel via asyncio.gather
+├── api.py               # OuraApiClient: 18 endpoints fetched in parallel via asyncio.gather
 ├── coordinator.py       # OuraDataUpdateCoordinator: modular _process_* methods per data category
 ├── sensor.py            # OuraSensor: CoordinatorEntity, config-driven from SENSOR_TYPES
 ├── binary_sensor.py     # OuraRestModeBinarySensor: single rest-mode entity
