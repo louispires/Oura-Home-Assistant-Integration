@@ -25,7 +25,9 @@ CONF_HISTORICAL_DATA_IMPORTED: Final = "historical_data_imported"
 
 # OAuth2 Constants
 OAUTH2_AUTHORIZE: Final = "https://cloud.ouraring.com/oauth/authorize"
+# Legacy endpoint (cloud.ouraring.com apps); new-portal apps use the fallback below.
 OAUTH2_TOKEN: Final = "https://api.ouraring.com/oauth/token"
+OAUTH2_TOKEN_FALLBACK: Final = "https://moi.ouraring.com/oauth/v2/ext/oauth-token"
 OAUTH2_SCOPES: Final = [
     "email",
     "personal",

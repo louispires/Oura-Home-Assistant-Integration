@@ -1,4 +1,26 @@
-﻿# Oura Ring v2 Integration v2.8.5
+﻿# Oura Ring v2 Integration v2.8.6
+
+## 🐛 BUG FIX IN v2.8.6
+
+### Token refresh now works for apps registered on the new Oura developer portal
+
+- **Fixed**: Apps registered on the new [developer.ouraring.com](https://developer.ouraring.com) portal fail every token refresh against the legacy `https://api.ouraring.com/oauth/token` endpoint with `400 invalid_request`, causing all 18 endpoints to fail simultaneously on every update cycle ([#68](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/68), root cause of [#61](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/61) / [#54](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/54)).
+- **Fix**: A custom `OuraOAuth2Implementation` now tries the legacy endpoint first; on a `400` rejection it transparently retries against `https://moi.ouraring.com/oauth/v2/ext/oauth-token` (the new-portal endpoint) and updates `token_url` permanently for that session so all subsequent refreshes go directly there. Apps registered on the legacy portal are unaffected — they succeed on the first attempt and the fallback never fires.
+
+**Why a fallback rather than a hard switch**: the new endpoint is undocumented and has not been confirmed to accept legacy-portal credentials. The fallback strategy keeps both old and new portal users working without requiring a re-registration or any user action.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ Full Docker suite passing: **123 tests passed**
+- ✅ New tests added for all fallback paths:
+  - `test_legacy_success_no_fallback` — legacy endpoint succeeds, `token_url` unchanged.
+  - `test_legacy_400_retries_fallback_and_succeeds` — legacy 400 → retry against new endpoint → success, `token_url` updated.
+  - `test_fallback_400_propagates_reauth_error` — both endpoints 400 → `OAuth2TokenRequestReauthError` propagates to coordinator → reauthentication prompt appears in HA UI.
+  - `test_second_call_goes_directly_to_fallback` — after the switch, subsequent calls use the fallback directly with no extra retry.
+
+---
+
+# Oura Ring v2 Integration v2.8.5
 
 ## 🐛 BUG FIXES IN v2.8.5
 
