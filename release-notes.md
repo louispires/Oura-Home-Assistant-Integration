@@ -1,4 +1,28 @@
-﻿# Oura Ring v2 Integration v2.8.6
+﻿# Oura Ring v2 Integration v2.8.7
+
+## 🐛 BUG FIXES IN v2.8.7
+
+### Initial OAuth setup now works for new-portal apps (401 on authorization_code exchange)
+
+- **Fixed**: Apps registered on [developer.ouraring.com](https://developer.ouraring.com) could not complete initial setup at all — the config flow aborted with `oauth_unauthorized` ([#71](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/71)).
+- **Root cause**: The v2.8.6 fallback only retried the new-portal endpoint on the errors seen during **token refresh**. The **initial** authorization_code exchange against the legacy `https://api.ouraring.com/oauth/token` endpoint is rejected with a `401`, and depending on the Home Assistant version this can surface as a plain `aiohttp.ClientResponseError` rather than the `OAuth2TokenRequestReauthError` the old handler expected — so the fallback never triggered and setup failed outright.
+- **Fix**: `OuraOAuth2Implementation._token_request` now catches `aiohttp.ClientResponseError` directly (which `OAuth2TokenRequestReauthError` is a subclass of) and retries against the new-portal endpoint for both `400` and `401` responses, covering the refresh path and the initial code exchange alike. Any other status (e.g. `429`/`5xx`) is left untouched and propagates as before.
+
+### MET-minutes historical statistics unit mismatch fixed
+
+- **Fixed**: `met_min_high`, `met_min_medium`, and `met_min_low` declared `unit: "min"` in statistics metadata while their live sensors are unitless (MET·min is a load quantity, not a duration), causing a recurring `units_changed` repair, recorder warnings on every 5-minute compile, and suppressed long-term statistics for these three sensors ([#70](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/70), thanks @mnestrud).
+- **Fix**: `STATISTICS_METADATA` now declares `unit: None` for all three MET-minute sensors, matching `const.py`. Recorder metadata converges with the live sensors and long-term statistics resume.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ Full Docker suite passing
+- ✅ New/updated tests in `test_application_credentials.py`:
+  - `test_legacy_401_retries_fallback_and_succeeds` — initial code exchange 401 → retry against fallback → success, `token_url` updated.
+  - `test_non_fallback_status_propagates_without_retry` — a non-400/401 status (e.g. 500) is not retried.
+
+---
+
+# Oura Ring v2 Integration v2.8.6
 
 ## 🐛 BUG FIX IN v2.8.6
 
