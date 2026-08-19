@@ -9,9 +9,11 @@ from datetime import datetime, timezone
 import logging
 from typing import Any, Callable
 
+from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.statistics import (
     async_add_external_statistics,
     async_import_statistics as async_import_statistics_ha,
+    statistics_during_period,
     StatisticData,
     StatisticMetaData,
     StatisticMeanType,
@@ -582,6 +584,36 @@ async def _process_rest_mode_statistics(
     return stats_count
 
 
+async def _get_baseline_sum(
+    hass: HomeAssistant, statistic_id: str, before: datetime
+) -> float:
+    """Return the cumulative sum stored immediately before ``before``.
+
+    Used to preserve sum continuity when re-importing a recent window. Returns
+    0.0 when no earlier statistic exists (e.g. a full historical import).
+    """
+    try:
+        stats = await get_instance(hass).async_add_executor_job(
+            statistics_during_period,
+            hass,
+            datetime(1970, 1, 1, tzinfo=timezone.utc),
+            before,
+            {statistic_id},
+            "month",
+            None,
+            {"sum"},
+        )
+    except Exception as err:  # recorder not ready / no history yet
+        _LOGGER.debug("Could not read baseline sum for %s: %s", statistic_id, err)
+        return 0.0
+
+    rows = stats.get(statistic_id)
+    if not rows:
+        return 0.0
+    last_sum = rows[-1].get("sum")
+    return float(last_sum) if last_sum is not None else 0.0
+
+
 async def _create_statistic(
     hass: HomeAssistant,
     sensor_key: str,
@@ -650,6 +682,13 @@ async def _create_statistic(
     statistics = []
     sorted_data_points = sorted(data_points, key=lambda point: point["timestamp"])
     running_sum = 0.0
+    if metadata["has_sum"]:
+        # Seed from the cumulative sum stored just before this window so that
+        # reconciling a recent (trailing-edge) window preserves sum continuity.
+        # A full historical import finds no prior row and starts at zero.
+        running_sum = await _get_baseline_sum(
+            hass, statistic_id, sorted_data_points[0]["timestamp"]
+        )
     for point in sorted_data_points:
         value = point["value"]
         if metadata["has_sum"]:

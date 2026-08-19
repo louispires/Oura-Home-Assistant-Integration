@@ -30,11 +30,13 @@
         "data": {
           "update_interval": "Update interval (minutes)",
           "historical_months": "Historical months to load (1-48, only applies on first setup)",
+          "statistics_reconcile_days": "Statistics reconcile window (days)",
           "historical_data_imported": "Historical data already imported"
         },
         "data_description": {
           "update_interval": "How often to fetch new data from Oura API (1-60 minutes)",
           "historical_months": "Number of months of historical data to import on first setup or when re-importing (1-48 months, up to 4 years)",
+          "statistics_reconcile_days": "How many recent days to re-import into long-term statistics once per day, so late-arriving Oura data backfills the correct dates (0 disables, max 30)",
           "historical_data_imported": "Toggle OFF to re-import historical data on next restart (will fetch the configured number of months). WARNING: This will trigger a full historical data import!"
         }
       }
@@ -61,6 +63,8 @@
       "time_in_bed": {"name": "Time in bed"},
       "bedtime_start": {"name": "Bedtime start"},
       "bedtime_end": {"name": "Bedtime end"},
+      "latest_bedtime_start": {"name": "Latest bedtime start"},
+      "latest_bedtime_end": {"name": "Latest bedtime end"},
       "readiness_score": {"name": "Readiness score"},
       "temperature_deviation": {"name": "Temperature deviation"},
       "resting_heart_rate": {"name": "Resting heart rate score"},
@@ -114,6 +118,18 @@
       "rest_mode_start": {"name": "Rest mode start"},
       "rest_mode_end": {"name": "Rest mode end"},
       "ring_battery_level": {"name": "Ring battery level"}
+    }
+  },
+  "services": {
+    "reconcile_statistics": {
+      "name": "Reconcile statistics",
+      "description": "Re-import a recent window of Oura data into long-term statistics so late-arriving data backfills the correct dates.",
+      "fields": {
+        "days": {
+          "name": "Days",
+          "description": "Number of recent days to reconcile. Defaults to the configured reconcile window."
+        }
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 """Tests for Oura Ring statistics module."""
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -8,6 +8,7 @@ from custom_components.oura.statistics import (
     STATISTICS_METADATA,
     DATA_SOURCE_CONFIG,
     _create_statistic,
+    _get_baseline_sum,
     _parse_date_to_timestamp,
     _apply_transformation,
     _compute_percentage,
@@ -244,4 +245,55 @@ async def test_create_statistic_builds_cumulative_sum(mock_hass, mock_config_ent
     assert [point["start"].day for point in statistics] == [1, 2, 3]
     assert [point["state"] for point in statistics] == [100, 200, 300]
     assert [point["sum"] for point in statistics] == [100, 300, 600]
+
+
+@pytest.mark.anyio
+async def test_create_statistic_seeds_sum_from_baseline(mock_hass, mock_config_entry):
+    """Reconciling a recent window continues the cumulative sum from the prior total."""
+    data_points = [
+        {"timestamp": datetime(2024, 1, 4, 12, 0, 0, tzinfo=timezone.utc), "value": 100},
+        {"timestamp": datetime(2024, 1, 5, 12, 0, 0, tzinfo=timezone.utc), "value": 200},
+    ]
+
+    with patch("custom_components.oura.statistics.er.async_get") as mock_er_get, \
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha, \
+         patch("custom_components.oura.statistics._get_baseline_sum", new=AsyncMock(return_value=1000.0)):
+        mock_registry = MagicMock()
+        mock_er_get.return_value = mock_registry
+        mock_registry.async_get_entity_id.return_value = "sensor.oura_ring_steps"
+
+        await _create_statistic(mock_hass, "steps", data_points, mock_config_entry)
+
+    _, _, statistics = mock_import_ha.call_args.args
+    # Sums continue from the 1000.0 baseline instead of restarting at zero
+    assert [point["sum"] for point in statistics] == [1100, 1300]
+
+
+@pytest.mark.anyio
+async def test_get_baseline_sum_returns_last_prior_sum(mock_hass):
+    """Baseline is the cumulative sum of the most recent row before the window."""
+    before = datetime(2024, 1, 5, 12, 0, 0, tzinfo=timezone.utc)
+    recorder = MagicMock()
+    recorder.async_add_executor_job = AsyncMock(
+        return_value={"sensor.oura_ring_steps": [{"sum": 500.0}, {"sum": 900.0}]}
+    )
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=recorder):
+        baseline = await _get_baseline_sum(mock_hass, "sensor.oura_ring_steps", before)
+
+    assert baseline == 900.0
+
+
+@pytest.mark.anyio
+async def test_get_baseline_sum_zero_when_no_history(mock_hass):
+    """No prior statistics → baseline of 0.0 (full historical import behaviour)."""
+    before = datetime(2024, 1, 5, 12, 0, 0, tzinfo=timezone.utc)
+    recorder = MagicMock()
+    recorder.async_add_executor_job = AsyncMock(return_value={})
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=recorder):
+        baseline = await _get_baseline_sum(mock_hass, "sensor.oura_ring_steps", before)
+
+    assert baseline == 0.0
+
 

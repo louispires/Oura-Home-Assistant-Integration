@@ -13,7 +13,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .api import OuraApiClient
-from .const import DOMAIN, DEFAULT_UPDATE_INTERVAL
+from .const import (
+    DOMAIN,
+    DEFAULT_UPDATE_INTERVAL,
+    CONF_STATISTICS_RECONCILE_DAYS,
+    DEFAULT_STATISTICS_RECONCILE_DAYS,
+)
 from .statistics import async_import_statistics
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,12 +44,23 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.api_client = api_client
         self.entry = entry
         self.historical_data_loaded = False
+        self._last_reconcile_day: date | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data via API."""
         try:
-            # For regular updates, only fetch 1 day of data
-            data = await self.api_client.async_get_data(days_back=1)
+            # Once per day, widen the fetch to reconcile late-arriving data into
+            # long-term statistics; otherwise keep the poll lightweight (1 day).
+            reconcile_days = self.entry.options.get(
+                CONF_STATISTICS_RECONCILE_DAYS, DEFAULT_STATISTICS_RECONCILE_DAYS
+            )
+            today = dt_util.now().date()
+            should_reconcile = (
+                reconcile_days > 0 and self._last_reconcile_day != today
+            )
+            days_back = reconcile_days if should_reconcile else 1
+
+            data = await self.api_client.async_get_data(days_back=days_back)
             processed_data = self._process_data(data)
 
             # Check if we got any actual data back
@@ -60,6 +76,20 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     return self.data
                 # If no existing data, this is a problem
                 raise UpdateFailed("No data available from API")
+
+            # Reconcile statistics with the wider window (idempotent upsert).
+            if should_reconcile:
+                try:
+                    await async_import_statistics(self.hass, data, self.entry)
+                    self._last_reconcile_day = today
+                    _LOGGER.debug(
+                        "Reconciled statistics over last %d days", reconcile_days
+                    )
+                except Exception as stats_err:
+                    # Don't fail the poll if reconciliation hits an error; retry next day.
+                    _LOGGER.warning(
+                        "Statistics reconciliation failed (will retry): %s", stats_err
+                    )
 
             return processed_data
 
@@ -121,6 +151,18 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except Exception as err:
             _LOGGER.error("Failed to fetch historical data: %s", err)
             raise
+
+    async def async_reconcile_statistics(self, days: int) -> None:
+        """Re-import a recent window of data into long-term statistics on demand.
+
+        Idempotent: overlapping runs upsert by (statistic_id, start) and sum
+        continuity is preserved by seeding from the prior stored cumulative sum.
+        """
+        _LOGGER.info("Reconciling statistics over last %d days...", days)
+        data = await self.api_client.async_get_data(days_back=days)
+        await async_import_statistics(self.hass, data, self.entry)
+        self._last_reconcile_day = dt_util.now().date()
+        _LOGGER.info("Statistics reconciliation complete")
 
     def _process_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """Process the raw API data into sensor values.
@@ -192,9 +234,48 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     processed["restfulness"] = contributors.get("restfulness")
                     processed["sleep_timing"] = contributors.get("timing")
 
+    @staticmethod
+    def _parse_api_timestamp(value: Any) -> datetime | None:
+        """Parse an Oura ISO 8601 timestamp into a timezone-aware datetime."""
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return None
+
+    def _process_latest_sleep_session(
+        self, sleep_detail_data: list[dict[str, Any]], processed: dict[str, Any]
+    ) -> None:
+        """Expose the chronologically most recent sleep session (incl. naps).
+
+        Unlike bedtime_start/end (which prefer the primary long_sleep), this tracks
+        the latest session by bedtime_start and updates as soon as Oura exposes it,
+        even while still in progress. latest_bedtime_end stays tied to the same record
+        and is left unset (unavailable) until Oura provides the end timestamp.
+        """
+        candidates = [
+            (ts, r)
+            for r in sleep_detail_data
+            if r.get("type") in ("long_sleep", "sleep", "late_nap")
+            and (ts := self._parse_api_timestamp(r.get("bedtime_start"))) is not None
+        ]
+        if not candidates:
+            return
+
+        _, latest = max(candidates, key=lambda item: item[0])
+        processed["latest_bedtime_start"] = self._parse_api_timestamp(
+            latest.get("bedtime_start")
+        )
+        if (end := self._parse_api_timestamp(latest.get("bedtime_end"))) is not None:
+            processed["latest_bedtime_end"] = end
+
     def _process_sleep_details(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process detailed sleep data (actual durations and HRV)."""
         sleep_detail_data = data.get("sleep_detail", {}).get("data") or []
+
+        # Latest session (any type) is independent of the primary long_sleep selection.
+        self._process_latest_sleep_session(sleep_detail_data, processed)
 
         # Only use completed records (both timestamps present). Oura returns in-progress
         # records during active sleep with bedtime_end=null, which causes bedtime sensors

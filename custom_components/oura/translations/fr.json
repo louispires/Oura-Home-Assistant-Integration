@@ -30,11 +30,13 @@
         "data": {
           "update_interval": "Intervalle de mise à jour (minutes)",
           "historical_months": "Mois historiques à charger (1-48, s'applique uniquement à la première configuration)",
+          "statistics_reconcile_days": "Fenêtre de réconciliation des statistiques (jours)",
           "historical_data_imported": "Données historiques déjà importées"
         },
         "data_description": {
           "update_interval": "Fréquence de récupération des nouvelles données de l'API Oura (1-60 minutes)",
           "historical_months": "Nombre de mois de données historiques à importer lors de la première configuration ou lors de la réimportation (1-48 mois, jusqu'à 4 ans)",
+          "statistics_reconcile_days": "Nombre de jours récents réimportés une fois par jour dans les statistiques à long terme, afin que les données Oura arrivées en retard complètent les bonnes dates (0 désactive, max 30)",
           "historical_data_imported": "Désactivez pour réimporter les données historiques au prochain redémarrage. ATTENTION: Cela déclenchera une importation complète des données historiques!"
         }
       }
@@ -61,6 +63,8 @@
       "time_in_bed": {"name": "Temps au lit"},
       "bedtime_start": {"name": "Début du coucher"},
       "bedtime_end": {"name": "Fin du coucher"},
+      "latest_bedtime_start": {"name": "Début du dernier coucher"},
+      "latest_bedtime_end": {"name": "Fin du dernier coucher"},
       "readiness_score": {"name": "Score de préparation"},
       "temperature_deviation": {"name": "Écart de température"},
       "resting_heart_rate": {"name": "Score de fréquence cardiaque au repos"},
@@ -114,6 +118,18 @@
       "rest_mode_start": {"name": "Début du mode repos"},
       "rest_mode_end": {"name": "Fin du mode repos"},
       "ring_battery_level": {"name": "Niveau de batterie de la bague"}
+    }
+  },
+  "services": {
+    "reconcile_statistics": {
+      "name": "Réconcilier les statistiques",
+      "description": "Réimporte une fenêtre récente de données Oura dans les statistiques à long terme afin que les données arrivées en retard complètent les bonnes dates.",
+      "fields": {
+        "days": {
+          "name": "Jours",
+          "description": "Nombre de jours récents à réconcilier. Par défaut, la fenêtre de réconciliation configurée."
+        }
+      }
     }
   }
 }

@@ -1,4 +1,39 @@
-﻿# Oura Ring v2 Integration v2.8.7
+﻿# Oura Ring v2 Integration v2.9.0
+
+## ✨ NEW IN v2.9.0
+
+### Latest Bedtime Start/End sensors for automation based on most recent sleep session (#74)
+
+**Two new timestamp sensors** track the chronologically most recent sleep session (incl. naps), independent of the primary long_sleep logic:
+
+- **Latest Bedtime Start** — `bedtime_start` of the most recent valid Oura sleep record (type: `long_sleep`, `sleep`, or `late_nap`)
+- **Latest Bedtime End** — `bedtime_end` of that same record; remains unavailable (unset) until Oura provides it, keeping both sensors tied to the same sleep session
+
+**Use case**: Automations can now trigger ~8 hours after the actual start of your latest sleep session (even if it's a nap), without reintroducing nap-overwriting behavior from [#49](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/49).
+
+**Existing behavior**: The primary `Bedtime Start` / `Bedtime End` sensors continue to prefer the `long_sleep` type, unchanged.
+
+### Backfill late-arriving Oura data into long-term statistics (#73)
+
+**Automatic daily reconciliation** ensures that data arriving late to Oura Cloud is written to long-term statistics with the correct historical date, not left as gaps:
+
+- **Reconcile window**: Once per calendar day, the integration re-imports the last 7 days (default; 0–30 days configurable) of Oura data into statistics. This is an idempotent upsert by `(statistic_id, start)`, so overlapping runs are safe.
+- **Sum continuity**: Cumulative statistics (`has_sum`) automatically seed from the prior stored sum, so reconciling a recent window continues the running total instead of restarting at zero.
+- **Graceful degradation**: A full historical re-import (via the `historical_data_imported` toggle) is still the fallback for recovering data missed during outages longer than the reconcile window.
+- **Manual service**: Call `oura.reconcile_statistics` (with optional `days` parameter) to force an on-demand reconciliation over any window (1–1440 days).
+
+**Configuration**: New option `statistics_reconcile_days` in **Settings** → **Devices & Services** → **Oura Ring** → **CONFIGURE**. Default 7 days; set to 0 to disable.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 132 automated tests passing (added 4 new coordinator tests for latest-bedtime selection, 3 new statistics tests for baseline sum continuity and reconciliation)
+- ✅ Full Docker test suite: all tests pass
+- ✅ Latest bedtime selection logic: verified for naps later than long_sleep, in-progress records (end unavailable), and deleted/rest exclusion
+- ✅ Statistics reconciliation: verified baseline-seeded sums, no-history fallback to 0, and once-per-day gating
+
+---
+
+# Oura Ring v2 Integration v2.8.7
 
 ## 🐛 BUG FIXES IN v2.8.7
 
@@ -78,6 +113,7 @@
 - **Fixed**: When Oura's token endpoint rejects a refresh token (HTTP 400), the integration was silently re-serving stale cached data forever instead of surfacing HA's "Reauthenticate" prompt ([#61](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/61), [#64](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/64)).
 
 **Root cause (two-layer bug)**:
+
 1. `asyncio.gather(..., return_exceptions=True)` in `api.py` swallowed `OAuth2TokenRequestReauthError` the same as any ordinary per-endpoint failure — logging it at DEBUG and substituting empty data — so it never reached `coordinator.py` at all.
 2. Even if it had reached the coordinator, the blanket `except Exception` handler there would have taken the `if self.data: return self.data` branch (silently treating the update as successful) rather than raising `ConfigEntryAuthFailed`.
 
@@ -207,6 +243,7 @@
 **Root cause**: Oura's `/sleep` API returns in-progress sleep records during active sleep tracking with `bedtime_end = null`. The integration was selecting the last record in the response array, which after midnight is the in-progress record for the current night rather than the completed sleep record.
 
 **Fix**:
+
 - Coordinator now filters for **completed** sleep records (both `bedtime_start` and `bedtime_end` present) before selecting the latest.
 - Prefers `long_sleep` type (main overnight sleep >3h) over naps when multiple completed records exist for the same day.
 - When no completed record is available (ring not yet synced after midnight), **preserves the last known bedtime values** rather than going Unknown.

@@ -29,12 +29,12 @@
         "description": "Configura con qué frecuencia se obtienen los datos de Oura Ring y cuántos meses de datos históricos cargar en la primera configuración.",
         "data": {
           "update_interval": "Intervalo de actualización (minutos)",
-          "historical_months": "Meses históricos a cargar (1-48, solo aplica en la primera configuración)",
-          "historical_data_imported": "Datos históricos ya importados"
+          "historical_months": "Meses históricos a cargar (1-48, solo aplica en la primera configuración)",          "statistics_reconcile_days": "Ventana de reconciliación de estadísticas (días)",          "historical_data_imported": "Datos históricos ya importados"
         },
         "data_description": {
           "update_interval": "Con qué frecuencia obtener nuevos datos de la API de Oura (1-60 minutos)",
           "historical_months": "Número de meses de datos históricos a importar en la primera configuración o al reimportar (1-48 meses, hasta 4 años)",
+          "statistics_reconcile_days": "Cuántos días recientes se reimportan una vez al día a las estadísticas a largo plazo, para que los datos de Oura que llegan tarde rellenen las fechas correctas (0 desactiva, máx. 30)",
           "historical_data_imported": "Desactiva para reimportar datos históricos en el próximo reinicio. ¡ADVERTENCIA: Esto activará una importación completa de datos históricos!"
         }
       }
@@ -61,6 +61,8 @@
       "time_in_bed": {"name": "Tiempo en cama"},
       "bedtime_start": {"name": "Inicio de hora de dormir"},
       "bedtime_end": {"name": "Fin de hora de dormir"},
+      "latest_bedtime_start": {"name": "Inicio de la última hora de dormir"},
+      "latest_bedtime_end": {"name": "Fin de la última hora de dormir"},
       "readiness_score": {"name": "Puntuación de preparación"},
       "temperature_deviation": {"name": "Desviación de temperatura"},
       "resting_heart_rate": {"name": "Puntuación de frecuencia cardíaca en reposo"},
@@ -114,6 +116,18 @@
       "rest_mode_start": {"name": "Inicio del modo de descanso"},
       "rest_mode_end": {"name": "Fin del modo de descanso"},
       "ring_battery_level": {"name": "Nivel de batería del anillo"}
+    }
+  },
+  "services": {
+    "reconcile_statistics": {
+      "name": "Reconciliar estadísticas",
+      "description": "Reimporta una ventana reciente de datos de Oura a las estadísticas a largo plazo para que los datos que llegan tarde rellenen las fechas correctas.",
+      "fields": {
+        "days": {
+          "name": "Días",
+          "description": "Número de días recientes a reconciliar. Por defecto usa la ventana de reconciliación configurada."
+        }
+      }
     }
   }
 }

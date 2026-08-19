@@ -34,8 +34,7 @@
         },
         "data_description": {
           "update_interval": "Wie oft neue Daten von der Oura-API abgerufen werden (1-60 Minuten)",
-          "historical_months": "Anzahl der Monate historischer Daten, die beim ersten Setup oder beim erneuten Import importiert werden (1-48 Monate, bis zu 4 Jahre)",
-          "historical_data_imported": "AUS schalten, um historische Daten beim nächsten Neustart erneut zu importieren. WARNUNG: Dies löst einen vollständigen Import historischer Daten aus!"
+          "historical_months": "Anzahl der Monate historischer Daten, die beim ersten Setup oder beim erneuten Import importiert werden (1-48 Monate, bis zu 4 Jahre)",          "statistics_reconcile_days": "Wie viele der letzten Tage einmal täglich erneut in die Langzeitstatistik importiert werden, damit verspätet eintreffende Oura-Daten die richtigen Tage nachtragen (0 deaktiviert, max. 30)",          "historical_data_imported": "AUS schalten, um historische Daten beim nächsten Neustart erneut zu importieren. WARNUNG: Dies löst einen vollständigen Import historischer Daten aus!"
         }
       }
     }
@@ -61,6 +60,8 @@
       "time_in_bed": {"name": "Zeit im Bett"},
       "bedtime_start": {"name": "Schlafenszeitbeginn"},
       "bedtime_end": {"name": "Schlafenszeitende"},
+      "latest_bedtime_start": {"name": "Letzter Schlafenszeitbeginn"},
+      "latest_bedtime_end": {"name": "Letztes Schlafenszeitende"},
       "readiness_score": {"name": "Bereitschaftswert"},
       "temperature_deviation": {"name": "Temperaturabweichung"},
       "resting_heart_rate": {"name": "Ruheherzfrequenzwert"},
@@ -114,6 +115,18 @@
       "rest_mode_start": {"name": "Beginn des Ruhemodus"},
       "rest_mode_end": {"name": "Ende des Ruhemodus"},
       "ring_battery_level": {"name": "Ringakkulevel"}
+    }
+  },
+  "services": {
+    "reconcile_statistics": {
+      "name": "Statistik abgleichen",
+      "description": "Importiert einen aktuellen Zeitraum von Oura-Daten erneut in die Langzeitstatistik, damit verspätet eintreffende Daten die richtigen Tage nachtragen.",
+      "fields": {
+        "days": {
+          "name": "Tage",
+          "description": "Anzahl der letzten abzugleichenden Tage. Standard ist das konfigurierte Abgleichsfenster."
+        }
+      }
     }
   }
 }

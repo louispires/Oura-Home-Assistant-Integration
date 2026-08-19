@@ -22,6 +22,7 @@ ATTRIBUTION: Final = "Data provided by Oura Ring"
 CONF_UPDATE_INTERVAL: Final = "update_interval"
 CONF_HISTORICAL_MONTHS: Final = "historical_months"
 CONF_HISTORICAL_DATA_IMPORTED: Final = "historical_data_imported"
+CONF_STATISTICS_RECONCILE_DAYS: Final = "statistics_reconcile_days"
 
 # OAuth2 Constants
 OAUTH2_AUTHORIZE: Final = "https://cloud.ouraring.com/oauth/authorize"
@@ -53,6 +54,11 @@ DEFAULT_HISTORICAL_MONTHS: Final = 3  # Fetch 3 months by default (90 days)
 MIN_HISTORICAL_MONTHS: Final = 1  # Minimum 1 month
 MAX_HISTORICAL_MONTHS: Final = 48  # Maximum 48 months (4 years)
 
+# Statistics reconciliation (backfill late-arriving data into long-term statistics)
+DEFAULT_STATISTICS_RECONCILE_DAYS: Final = 7  # Re-import last 7 days once per day
+MIN_STATISTICS_RECONCILE_DAYS: Final = 0  # 0 disables reconciliation
+MAX_STATISTICS_RECONCILE_DAYS: Final = 30  # Cap to bound API/DB load
+
 # Sensor types
 SENSOR_TYPES: Final = {
     # Sleep sensors
@@ -71,6 +77,9 @@ SENSOR_TYPES: Final = {
     "time_in_bed": {"name": "Time in Bed", "icon": "mdi:bed-clock", "unit": "h", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "sleep_detail"},
     "bedtime_start": {"name": "Bedtime Start", "icon": "mdi:sleep", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "sleep_detail"},
     "bedtime_end": {"name": "Bedtime End", "icon": "mdi:sleep-off", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "sleep_detail"},
+    # Most recent sleep session (any type incl. naps) - updates as soon as Oura exposes it
+    "latest_bedtime_start": {"name": "Latest Bedtime Start", "icon": "mdi:bed-clock", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "sleep_detail"},
+    "latest_bedtime_end": {"name": "Latest Bedtime End", "icon": "mdi:bed-clock", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "sleep_detail"},
     "low_battery_alert": {"name": "Low Battery Alert", "icon": "mdi:battery-alert", "unit": None, "device_class": None, "state_class": None, "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "sleep_detail"},
     "lowest_sleep_heart_rate": {"name": "Lowest Sleep Heart Rate", "icon": "mdi:heart-minus", "unit": "bpm", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep_detail"},
     "average_sleep_heart_rate": {"name": "Average Sleep Heart Rate", "icon": "mdi:heart", "unit": "bpm", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep_detail"},
