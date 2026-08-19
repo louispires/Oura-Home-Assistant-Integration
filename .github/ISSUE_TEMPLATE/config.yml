@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/louispires/Oura-Home-Assistant-Integration/blob/main/README.md
+    about: Read the README, installation, and troubleshooting guides before opening an issue.
+  - name: Troubleshooting Guide
+    url: https://github.com/louispires/Oura-Home-Assistant-Integration/blob/main/docs/TROUBLESHOOTING.md
+    about: Common issues and solutions.
+  - name: Report a security vulnerability
+    url: https://github.com/louispires/Oura-Home-Assistant-Integration/security/advisories/new
+    about: Please report security issues privately, not as public issues.
