@@ -47,3 +47,4 @@ plans/
 home-assistant.log
 home-assistant_v2.db
 release-notes.md
+docker-compose.dev.yml
