@@ -31,6 +31,12 @@
 - ✅ Latest bedtime selection logic: verified for naps later than long_sleep, in-progress records (end unavailable), and deleted/rest exclusion
 - ✅ Statistics reconciliation: verified baseline-seeded sums, no-history fallback to 0, and once-per-day gating
 
+## 🐛 FIXES IN v2.9.0-rc2 (reconciliation feedback from #73)
+
+- **Fixed**: `Bedtime Start` / `Bedtime End` long-term statistics rows were created with `state`/`mean`/`sum`/`min`/`max` all `NULL`. These are timestamp values and cannot be represented as long-term statistics; they're now excluded from the statistics import (live sensors are unaffected).
+- **Fixed**: Days with multiple sleep sessions (e.g. a nap and an overnight sleep) collided on the same daily statistics timestamp, corrupting cumulative sums (including the reported negative `Total Sleep Duration` sums). Daily sleep statistics now collapse to one record per day, preferring `long_sleep` (consistent with the primary Bedtime Start/End semantics from #49), falling back to the longest session.
+- 135 automated tests passing (added 3 new statistics tests covering the above).
+
 ---
 
 # Oura Ring v2 Integration v2.8.7

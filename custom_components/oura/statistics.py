@@ -72,8 +72,6 @@ STATISTICS_METADATA = {
     "awake_time": {"name": "Awake Time", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
     "sleep_latency": {"name": "Sleep Latency", "unit": UnitOfTime.MINUTES, "has_mean": True, "has_sum": False},
     "time_in_bed": {"name": "Time in Bed", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
-    "bedtime_start": {"name": "Bedtime Start", "unit": None, "has_mean": False, "has_sum": False},
-    "bedtime_end": {"name": "Bedtime End", "unit": None, "has_mean": False, "has_sum": False},
     "deep_sleep_percentage": {"name": "Deep Sleep Percentage", "unit": "%", "has_mean": True, "has_sum": False},
     "rem_sleep_percentage": {"name": "REM Sleep Percentage", "unit": "%", "has_mean": True, "has_sum": False},
     "average_sleep_hrv": {"name": "Average Sleep HRV", "unit": "ms", "has_mean": True, "has_sum": False},
@@ -141,8 +139,6 @@ DATA_SOURCE_CONFIG = {
             {"sensor_key": "average_sleep_hrv", "api_path": "average_hrv"},
             {"sensor_key": "lowest_sleep_heart_rate", "api_path": "lowest_heart_rate"},
             {"sensor_key": "average_sleep_heart_rate", "api_path": "average_heart_rate"},
-            {"sensor_key": "bedtime_start", "api_path": "bedtime_start", "transform": "iso_to_datetime"},
-            {"sensor_key": "bedtime_end", "api_path": "bedtime_end", "transform": "iso_to_datetime"},
         ],
         "computed": [
             {
@@ -262,12 +258,47 @@ async def async_import_statistics(
                 _LOGGER.debug("Imported %d %s statistics", stats_count, source_key)
             continue
 
+        if source_key == "sleep_detail":
+            # A day can have multiple sessions (naps + overnight sleep); daily
+            # statistics have one timestamp per day, so pick a single record
+            # to represent it (mirrors the primary Bedtime Start/End long_sleep
+            # preference from issue #49).
+            source_data = _collapse_sleep_detail_by_day(source_data)
+
         # Use generic processor
         stats_count = await _process_generic_statistics(hass, source_data, config, entry)
         total_stats += stats_count
         _LOGGER.debug("Imported %d %s statistics", stats_count, source_key)
 
     _LOGGER.info("Successfully imported %d total statistics data points", total_stats)
+
+
+def _collapse_sleep_detail_by_day(
+    sleep_detail_data: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Reduce sleep_detail records to one per Oura day for daily statistics.
+
+    Prefers the "long_sleep" record; falls back to the longest
+    total_sleep_duration when a day has no long_sleep record.
+    """
+    by_day: dict[str, dict[str, Any]] = {}
+    for record in sleep_detail_data:
+        day = record.get("day")
+        if not day:
+            continue
+        existing = by_day.get(day)
+        if existing is None:
+            by_day[day] = record
+            continue
+        if existing.get("type") == "long_sleep":
+            continue
+        if record.get("type") == "long_sleep":
+            by_day[day] = record
+            continue
+        if record.get("total_sleep_duration", 0) > existing.get("total_sleep_duration", 0):
+            by_day[day] = record
+
+    return list(by_day.values())
 
 
 async def _process_generic_statistics(

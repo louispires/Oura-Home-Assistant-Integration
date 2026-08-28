@@ -63,6 +63,49 @@ def test_sleep_efficiency_uses_sleep_detail_mapping():
     assert {"sensor_key": "sleep_efficiency", "api_path": "efficiency"} in sleep_detail_mappings
 
 
+def test_bedtime_timestamps_excluded_from_statistics():
+    """Bedtime Start/End are timestamps and cannot be long-term statistics (issue #73)."""
+    sleep_detail_mappings = DATA_SOURCE_CONFIG["sleep_detail"]["mappings"]
+
+    assert all(mapping["sensor_key"] != "bedtime_start" for mapping in sleep_detail_mappings)
+    assert all(mapping["sensor_key"] != "bedtime_end" for mapping in sleep_detail_mappings)
+    assert "bedtime_start" not in STATISTICS_METADATA
+    assert "bedtime_end" not in STATISTICS_METADATA
+
+
+def test_collapse_sleep_detail_by_day_prefers_long_sleep():
+    """Same-day nap + overnight sleep collapse to a single long_sleep record (issue #73)."""
+    from custom_components.oura.statistics import _collapse_sleep_detail_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "long_sleep", "total_sleep_duration": 28800},
+        {"day": "2024-01-15", "type": "late_nap", "total_sleep_duration": 3600},
+        {"day": "2024-01-16", "type": "sleep", "total_sleep_duration": 1800},
+    ]
+
+    collapsed = _collapse_sleep_detail_by_day(records)
+
+    by_day = {record["day"]: record for record in collapsed}
+    assert len(collapsed) == 2
+    assert by_day["2024-01-15"]["type"] == "long_sleep"
+    assert by_day["2024-01-16"]["type"] == "sleep"
+
+
+def test_collapse_sleep_detail_by_day_falls_back_to_longest():
+    """Without a long_sleep record, the longest session for the day wins."""
+    from custom_components.oura.statistics import _collapse_sleep_detail_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "late_nap", "total_sleep_duration": 1800},
+        {"day": "2024-01-15", "type": "sleep", "total_sleep_duration": 3600},
+    ]
+
+    collapsed = _collapse_sleep_detail_by_day(records)
+
+    assert len(collapsed) == 1
+    assert collapsed[0]["total_sleep_duration"] == 3600
+
+
 def test_timestamp_parsing():
     """Test that date strings are correctly parsed to timestamps."""
     # Test valid date
