@@ -129,7 +129,6 @@ DATA_SOURCE_CONFIG = {
     "sleep_detail": {
         "mappings": [
             {"sensor_key": "sleep_efficiency", "api_path": "efficiency"},
-            {"sensor_key": "total_sleep_duration", "api_path": "total_sleep_duration", "transform": "seconds_to_hours"},
             {"sensor_key": "deep_sleep_duration", "api_path": "deep_sleep_duration", "transform": "seconds_to_hours"},
             {"sensor_key": "rem_sleep_duration", "api_path": "rem_sleep_duration", "transform": "seconds_to_hours"},
             {"sensor_key": "light_sleep_duration", "api_path": "light_sleep_duration", "transform": "seconds_to_hours"},
@@ -259,6 +258,18 @@ async def async_import_statistics(
             continue
 
         if source_key == "sleep_detail":
+            # Total Sleep Duration should reflect every valid session that day
+            # (naps included), unlike the other sleep_detail stats below which
+            # only represent the primary record (issue #73).
+            total_sleep_points = [
+                {"timestamp": timestamp, "value": _apply_transformation(seconds, "seconds_to_hours")}
+                for day, seconds in _sum_total_sleep_duration_by_day(source_data).items()
+                if (timestamp := _parse_date_to_timestamp(day))
+            ]
+            if total_sleep_points:
+                await _create_statistic(hass, "total_sleep_duration", total_sleep_points, entry)
+                total_stats += len(total_sleep_points)
+
             # A day can have multiple sessions (naps + overnight sleep); daily
             # statistics have one timestamp per day, so pick a single record
             # to represent it (mirrors the primary Bedtime Start/End long_sleep
@@ -299,6 +310,30 @@ def _collapse_sleep_detail_by_day(
             by_day[day] = record
 
     return list(by_day.values())
+
+
+# Sleep record types counted as real sleep sessions (matches the live latest-
+# bedtime session filter in coordinator.py).
+_VALID_SLEEP_TYPES = ("long_sleep", "sleep", "late_nap")
+
+
+def _sum_total_sleep_duration_by_day(
+    sleep_detail_data: list[dict[str, Any]],
+) -> dict[str, int]:
+    """Sum total_sleep_duration across all valid sleep records for each day.
+
+    Every distinct session (naps included) contributes to the day's total,
+    unlike _collapse_sleep_detail_by_day which picks a single representative
+    record for the other sleep_detail statistics (issue #73).
+    """
+    totals: dict[str, int] = {}
+    for record in sleep_detail_data:
+        day = record.get("day")
+        duration = record.get("total_sleep_duration")
+        if not day or duration is None or record.get("type") not in _VALID_SLEEP_TYPES:
+            continue
+        totals[day] = totals.get(day, 0) + duration
+    return totals
 
 
 async def _process_generic_statistics(

@@ -1,5 +1,11 @@
 ﻿# Oura Ring v2 Integration v2.9.0
 
+## 🐛 FIXES IN v2.9.0-rc3 (reconciliation feedback from #73)
+
+- **Fixed**: `Total Sleep Duration` historical statistics only reflected the primary `long_sleep` record for a day, dropping any naps recorded the same day (e.g. a 30-minute nap plus a 5h02m overnight sleep reported 5h02m instead of the actual 5h32m). `Total Sleep Duration` is now summed across every valid sleep record (`long_sleep`, `sleep`, `late_nap`) for the Oura day, so late-arriving naps correctly add to the day's total on the next reconciliation.
+- All other sleep_detail statistics (`Sleep Efficiency`, `Deep/REM/Light Sleep Duration`, `Awake Time`, `Time in Bed`, sleep HRV/heart rate, and the deep/REM sleep percentages) are unaffected and continue to reflect the primary `long_sleep` record, consistent with the primary Bedtime Start/End semantics from #49.
+- 139 automated tests passing (added 5 new statistics tests covering the day-level sleep duration sum).
+
 ## ✨ NEW IN v2.9.0
 
 ### Latest Bedtime Start/End sensors for automation based on most recent sleep session (#74)

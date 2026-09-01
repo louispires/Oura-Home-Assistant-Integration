@@ -106,6 +106,45 @@ def test_collapse_sleep_detail_by_day_falls_back_to_longest():
     assert collapsed[0]["total_sleep_duration"] == 3600
 
 
+def test_total_sleep_duration_not_in_collapsed_mapping():
+    """Total Sleep Duration is summed separately, not read off the single collapsed record (issue #73)."""
+    sleep_detail_mappings = DATA_SOURCE_CONFIG["sleep_detail"]["mappings"]
+
+    assert all(mapping["sensor_key"] != "total_sleep_duration" for mapping in sleep_detail_mappings)
+    assert "total_sleep_duration" in STATISTICS_METADATA
+
+
+def test_sum_total_sleep_duration_by_day_includes_naps():
+    """Nap + overnight sleep on the same day both contribute to the day's total (issue #73)."""
+    from custom_components.oura.statistics import _sum_total_sleep_duration_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "long_sleep", "total_sleep_duration": 18120},  # 5h02m
+        {"day": "2024-01-15", "type": "late_nap", "total_sleep_duration": 1800},     # 30m
+        {"day": "2024-01-16", "type": "sleep", "total_sleep_duration": 3600},
+    ]
+
+    totals = _sum_total_sleep_duration_by_day(records)
+
+    assert totals["2024-01-15"] == 19920  # 5h32m
+    assert totals["2024-01-16"] == 3600
+
+
+def test_sum_total_sleep_duration_by_day_ignores_invalid_types():
+    """Records with a type outside the valid-sleep set don't contribute to the sum."""
+    from custom_components.oura.statistics import _sum_total_sleep_duration_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "long_sleep", "total_sleep_duration": 3600},
+        {"day": "2024-01-15", "type": "rest", "total_sleep_duration": 999999},
+        {"day": "2024-01-15", "total_sleep_duration": 999999},  # missing type
+    ]
+
+    totals = _sum_total_sleep_duration_by_day(records)
+
+    assert totals["2024-01-15"] == 3600
+
+
 def test_timestamp_parsing():
     """Test that date strings are correctly parsed to timestamps."""
     # Test valid date
