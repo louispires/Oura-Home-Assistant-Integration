@@ -98,7 +98,10 @@ class TestAsyncStepCreationAbortRemap:
             ) as mock_abort:
                 result = await flow.async_step_creation()
 
-        mock_abort.assert_called_once_with(reason="oauth_token_rejected")
+        assert mock_abort.call_args.kwargs["reason"] == "oauth_token_rejected"
+        placeholders = mock_abort.call_args.kwargs["description_placeholders"]
+        assert placeholders["redirect_uri"] == "https://my.home-assistant.io/redirect/oauth"
+        assert "portals" in placeholders
         assert result["reason"] == "oauth_token_rejected"
 
     @pytest.mark.anyio
@@ -117,7 +120,7 @@ class TestAsyncStepCreationAbortRemap:
             ) as mock_abort:
                 result = await flow.async_step_creation()
 
-        mock_abort.assert_called_once_with(reason="oauth_token_rejected")
+        assert mock_abort.call_args.kwargs["reason"] == "oauth_token_rejected"
         assert result["reason"] == "oauth_token_rejected"
 
     @pytest.mark.anyio

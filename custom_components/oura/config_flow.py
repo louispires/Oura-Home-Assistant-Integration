@@ -87,7 +87,14 @@ class OuraFlowHandler(
             "oauth_unauthorized",
             "oauth_failed",
         ):
-            return self.async_abort(reason="oauth_token_rejected")
+            # URLs must be placeholders, not inline in strings.json (hassfest TRANSLATIONS rule).
+            return self.async_abort(
+                reason="oauth_token_rejected",
+                description_placeholders={
+                    "redirect_uri": "https://my.home-assistant.io/redirect/oauth",
+                    "portals": "developer.ouraring.com or cloud.ouraring.com",
+                },
+            )
         return result
 
     async def async_oauth_create_entry(self, data: dict[str, Any]) -> config_entries.FlowResult:

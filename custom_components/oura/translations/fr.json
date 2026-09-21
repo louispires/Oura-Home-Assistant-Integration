@@ -17,7 +17,7 @@
       "invalid_user_info": "Impossible de récupérer les informations utilisateur d'Oura",
       "wrong_account": "Vous devez vous réauthentifier avec le même compte Oura",
       "reauth_successful": "Réauthentification réussie",
-      "oauth_token_rejected": "Oura a rejeté la demande de jeton. Vérifiez que l'URI de redirection enregistrée dans votre application Oura est exactement https://my.home-assistant.io/redirect/oauth, que vous avez choisi le bon portail développeur (developer.ouraring.com ou cloud.ouraring.com) et que votre client secret n'a pas été régénéré."
+      "oauth_token_rejected": "Oura a rejeté la demande de jeton. Vérifiez que l'URI de redirection enregistrée dans votre application Oura est exactement {redirect_uri}, que vous avez enregistré l'application sur le bon portail développeur ({portals}) et que votre client secret n'a pas été régénéré."
     },
     "create_entry": {
       "default": "Authentifié avec succès avec Oura Ring"

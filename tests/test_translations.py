@@ -4,6 +4,7 @@ Guards against adding a sensor to SENSOR_TYPES without a matching entity name,
 and against translations/*.json drifting out of sync with strings.json.
 """
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -53,3 +54,20 @@ def test_translation_abort_keys_match_strings_json(locale):
         f"{locale}.json config.abort keys differ from strings.json: "
         f"missing={strings_keys - translation_keys}, extra={translation_keys - strings_keys}"
     )
+
+
+@pytest.mark.parametrize("locale", ("strings", *_TRANSLATION_LOCALES))
+def test_abort_strings_contain_no_urls(locale):
+    """hassfest rejects inline URLs in strings; they must be description placeholders."""
+    path = (
+        _STRINGS_PATH
+        if locale == "strings"
+        else _COMPONENT_DIR / "translations" / f"{locale}.json"
+    )
+    offenders = [
+        key
+        for key, text in _load(path)["config"]["abort"].items()
+        if re.search(r"https?://|www\.", text)
+    ]
+
+    assert not offenders, f"{path.name} config.abort entries contain inline URLs: {offenders}"

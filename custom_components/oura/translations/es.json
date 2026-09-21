@@ -17,7 +17,7 @@
       "invalid_user_info": "No se pudo obtener la información del usuario de Oura",
       "wrong_account": "Debes reautenticarte con la misma cuenta de Oura",
       "reauth_successful": "Reautenticación exitosa",
-      "oauth_token_rejected": "Oura rechazó la solicitud del token. Verifica que el URI de redirección registrado en tu app de Oura sea exactamente https://my.home-assistant.io/redirect/oauth, que hayas elegido el portal de desarrollador correcto (developer.ouraring.com frente a cloud.ouraring.com) y que tu client secret no se haya regenerado."
+      "oauth_token_rejected": "Oura rechazó la solicitud del token. Verifica que el URI de redirección registrado en tu app de Oura sea exactamente {redirect_uri}, que hayas registrado la app en el portal de desarrollador correcto ({portals}) y que tu client secret no se haya regenerado."
     },
     "create_entry": {
       "default": "Autenticado exitosamente con Oura Ring"
