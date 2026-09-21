@@ -1,7 +1,9 @@
 """Live test: connect to real Oura API and inspect heart rate data freshness.
 
 Usage:
-    Set OURA_TOKEN to a Personal Access Token from cloud.ouraring.com/personal-access-tokens
+    Set OURA_TOKEN to an OAuth2 access token (from an existing HA config entry, or
+    a fresh code exchange). Personal access tokens were deprecated by Oura in
+    December 2025 and are no longer accepted.
 
     python tests/live_heartrate_test.py
 
@@ -121,8 +123,9 @@ async def main() -> None:
     token = os.environ.get("OURA_TOKEN", "").strip()
     if not token:
         print(
-            "ERROR: Set OURA_TOKEN environment variable to your Oura Personal Access Token.\n"
-            "  Get one at: https://cloud.ouraring.com/personal-access-tokens\n"
+            "ERROR: Set OURA_TOKEN environment variable to an OAuth2 access token.\n"
+            "  Personal access tokens were deprecated in December 2025; copy an\n"
+            "  access_token from an existing HA config entry or a fresh code exchange.\n"
             "\n"
             "  Windows PowerShell:  $env:OURA_TOKEN = 'your_token_here'\n"
             "  bash/zsh:            export OURA_TOKEN=your_token_here\n"
@@ -143,7 +146,7 @@ async def main() -> None:
     except aiohttp.ClientResponseError as err:
         print(f"API error {err.status}: {err.message}")
         if err.status == 401:
-            print("Token is invalid or expired. Generate a new one at cloud.ouraring.com/personal-access-tokens")
+            print("Token is invalid or expired. Get a fresh access_token via OAuth2 (see tests/live_token_endpoint_test.py).")
         sys.exit(1)
 
     print(f"Total pages fetched: {pages}\n")

@@ -233,6 +233,10 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if contributors := latest_sleep.get("contributors"):
                     processed["restfulness"] = contributors.get("restfulness")
                     processed["sleep_timing"] = contributors.get("timing")
+                    processed["deep_sleep_score"] = contributors.get("deep_sleep")
+                    processed["rem_sleep_score"] = contributors.get("rem_sleep")
+                    processed["total_sleep_score"] = contributors.get("total_sleep")
+                    processed["sleep_latency_score"] = contributors.get("latency")
 
     @staticmethod
     def _parse_api_timestamp(value: Any) -> datetime | None:
@@ -378,6 +382,15 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if reason := latest_sleep_detail.get("sleep_analysis_reason"):
             processed["sleep_analysis_reason"] = reason
 
+        if (average_breath := latest_sleep_detail.get("average_breath")) is not None:
+            processed["average_breath"] = average_breath
+        if (restless_periods := latest_sleep_detail.get("restless_periods")) is not None:
+            processed["restless_periods"] = restless_periods
+        if (sleep_score_delta := latest_sleep_detail.get("sleep_score_delta")) is not None:
+            processed["sleep_score_delta"] = sleep_score_delta
+        if (readiness_score_delta := latest_sleep_detail.get("readiness_score_delta")) is not None:
+            processed["readiness_score_delta"] = readiness_score_delta
+
     def _process_readiness(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process readiness data (contributors are scores 1-100)."""
         if readiness_data := data.get("readiness", {}).get("data"):
@@ -385,11 +398,18 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 latest_readiness = readiness_data[-1]
                 processed["readiness_score"] = latest_readiness.get("score")
                 processed["temperature_deviation"] = latest_readiness.get("temperature_deviation")
+                processed["temperature_trend_deviation"] = latest_readiness.get("temperature_trend_deviation")
 
                 if contributors := latest_readiness.get("contributors"):
                     processed["resting_heart_rate"] = contributors.get("resting_heart_rate")
                     processed["hrv_balance"] = contributors.get("hrv_balance")
                     processed["sleep_regularity"] = contributors.get("sleep_regularity")
+                    processed["activity_balance"] = contributors.get("activity_balance")
+                    processed["body_temperature"] = contributors.get("body_temperature")
+                    processed["previous_day_activity"] = contributors.get("previous_day_activity")
+                    processed["previous_night"] = contributors.get("previous_night")
+                    processed["recovery_index"] = contributors.get("recovery_index")
+                    processed["sleep_balance"] = contributors.get("sleep_balance")
 
     def _process_activity(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process activity data (steps, calories, MET minutes)."""
@@ -410,6 +430,27 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     processed["medium_activity_time"] = t / 60
                 if (t := latest_activity.get("low_activity_time")) is not None:
                     processed["low_activity_time"] = t / 60
+
+                if contributors := latest_activity.get("contributors"):
+                    processed["meet_daily_targets"] = contributors.get("meet_daily_targets")
+                    processed["move_every_hour"] = contributors.get("move_every_hour")
+                    processed["recovery_time"] = contributors.get("recovery_time")
+                    processed["stay_active"] = contributors.get("stay_active")
+                    processed["training_frequency"] = contributors.get("training_frequency")
+                    processed["training_volume"] = contributors.get("training_volume")
+
+                if (inactivity_alerts := latest_activity.get("inactivity_alerts")) is not None:
+                    processed["inactivity_alerts"] = inactivity_alerts
+                if (t := latest_activity.get("non_wear_time")) is not None:
+                    processed["non_wear_time"] = t / 60
+                if (t := latest_activity.get("resting_time")) is not None:
+                    processed["resting_time"] = t / 60
+                if (t := latest_activity.get("sedentary_time")) is not None:
+                    processed["sedentary_time"] = t / 60
+                if (distance := latest_activity.get("equivalent_walking_distance")) is not None:
+                    processed["equivalent_walking_distance"] = distance
+                if (target_meters := latest_activity.get("target_meters")) is not None:
+                    processed["target_meters"] = target_meters
 
     def _process_heart_rate(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process heart rate data with aggregation from recent readings."""

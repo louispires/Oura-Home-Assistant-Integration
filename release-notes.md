@@ -1,4 +1,42 @@
-﻿# Oura Ring v2 Integration v2.9.0
+﻿# Oura Ring v2 Integration v2.10.0
+
+> **Includes everything from v2.9.0**, which only ever shipped as release candidates. Upgrading from v2.8.7 gets you the Latest Bedtime sensors ([#74](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/74)) and statistics reconciliation ([#73](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/73)) as well — see the v2.9.0 section below.
+
+## 🐛 FIXES IN v2.10.0 (#75)
+
+- **Fixed**: OAuth setup failed with `401, message='Unauthorized', url='https://moi.ouraring.com/oauth/v2/ext/oauth-token'` for new (and some legacy) developer-portal apps. Root cause: the integration tried the legacy `api.ouraring.com/oauth/token` endpoint first; when it rejected the authorization code, Oura revoked the single-use code (per RFC 6749 §4.1.2), so the fallback retry against `moi.ouraring.com` then failed too even though it would have accepted the original code.
+- **Changed**: `moi.ouraring.com/oauth/v2/ext/oauth-token` is now the primary token endpoint (it is the endpoint Oura's own infrastructure actually uses today, despite `cloud.ouraring.com`'s docs still listing the legacy one); `api.ouraring.com/oauth/token` remains as an automatic fallback for the shrinking set of apps still rejected by `moi`.
+- **Added**: a new `oauth_token_rejected` setup-abort message that names the likely causes (wrong developer portal, redirect URI must be exactly `https://my.home-assistant.io/redirect/oauth`, regenerated client secret) instead of a bare generic OAuth error.
+- **Added**: redacted error logging (host, grant type, HTTP status — never tokens or secrets) on token request failures, to make future reports diagnosable from the log alone.
+
+## ✨ NEW IN v2.10.0 — Oura OpenAPI 1.39 alignment
+
+### Resilience: rate limiting and subscription handling
+
+- **429 Too Many Requests**: the client now honours the `Retry-After` header and retries once (capped at 30s) before giving up, instead of treating every rate-limit hit as a hard failure. Historical imports spanning many months are the primary beneficiary.
+- **403 Forbidden**: treated the same as 401 on optional/Gen3/subscription-gated endpoints (resilience, SpO2, VO2 Max, cardiovascular age, workouts, sessions, tags, rest mode, ring configuration/battery) — an expired Oura subscription now degrades to empty data instead of a logged error.
+
+### ~27 new sensors from readiness/sleep/activity contributor breakdowns
+
+- **Sleep**: Average Breathing Rate, Restless Periods, Sleep Score Delta, Readiness Score Delta, plus sleep-contribution scores (Deep Sleep, REM Sleep, Total Sleep, Sleep Latency contributions).
+- **Readiness**: Temperature Trend Deviation, plus all remaining contributor scores (Activity Balance, Body Temperature, Previous Day Activity, Previous Night, Recovery Index, Sleep Balance).
+- **Activity**: all six contributor scores (Meet Daily Targets, Move Every Hour, Recovery Time, Stay Active, Training Frequency, Training Volume) plus Inactivity Alerts, Ring Non-Wear Time, Resting Time, Sedentary Time, Equivalent Walking Distance, and Target Distance.
+- All new numeric sensors are backfilled into long-term statistics the same as existing ones.
+
+### Efficiency
+
+- The heart rate endpoint now requests only the `timestamp` and `bpm` fields it actually uses, shrinking the payload on every 5-minute poll.
+
+### Housekeeping
+
+- Personal access tokens (deprecated by Oura in December 2025) are no longer referenced in setup docs or the live test scripts — OAuth2 only.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 161 automated tests passing (up from 133): OAuth endpoint-order regression tests, 429/403 handling, heart-rate field trimming, new-sensor statistics coverage, and a strings.json/translations parity guard (which also caught and fixed a pre-existing missing `sleep_analysis_reason` entry in `translations/en.json`).
+- ✅ Full Docker test suite: all tests pass
+
+# Oura Ring v2 Integration v2.9.0
 
 ## 🐛 FIXES IN v2.9.0-rc3 (reconciliation feedback from #73)
 

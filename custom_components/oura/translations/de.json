@@ -16,7 +16,8 @@
       "unknown": "Ein unerwarteter Fehler ist aufgetreten",
       "invalid_user_info": "Benutzerinformationen konnten nicht von Oura abgerufen werden",
       "wrong_account": "Sie müssen sich mit demselben Oura-Konto erneut authentifizieren",
-      "reauth_successful": "Erneute Authentifizierung erfolgreich"
+      "reauth_successful": "Erneute Authentifizierung erfolgreich",
+      "oauth_token_rejected": "Oura hat die Token-Anfrage abgelehnt. Prüfen Sie, ob die in Ihrer Oura-App registrierte Redirect-URI genau https://my.home-assistant.io/redirect/oauth lautet, ob Sie das richtige Entwicklerportal gewählt haben (developer.ouraring.com vs. cloud.ouraring.com) und ob Ihr Client-Secret nicht neu generiert wurde."
     },
     "create_entry": {
       "default": "Erfolgreich mit Oura Ring authentifiziert"
@@ -114,7 +115,34 @@
       "tag_count_today": {"name": "Heutige Tag-Anzahl"},
       "rest_mode_start": {"name": "Beginn des Ruhemodus"},
       "rest_mode_end": {"name": "Ende des Ruhemodus"},
-      "ring_battery_level": {"name": "Ringakkulevel"}
+      "ring_battery_level": {"name": "Ringakkulevel"},
+      "deep_sleep_score": {"name": "Tiefschlaf-Beitrag"},
+      "rem_sleep_score": {"name": "REM-Schlaf-Beitrag"},
+      "total_sleep_score": {"name": "Gesamtschlaf-Beitrag"},
+      "sleep_latency_score": {"name": "Einschlafzeit-Beitrag"},
+      "average_breath": {"name": "Durchschnittliche Atemfrequenz"},
+      "restless_periods": {"name": "Unruhige Phasen"},
+      "sleep_score_delta": {"name": "Schlafwert-Delta"},
+      "readiness_score_delta": {"name": "Bereitschaftswert-Delta"},
+      "temperature_trend_deviation": {"name": "Temperaturtrend-Abweichung"},
+      "activity_balance": {"name": "Aktivitätsbalance-Beitrag"},
+      "body_temperature": {"name": "Körpertemperatur-Beitrag"},
+      "previous_day_activity": {"name": "Beitrag der Vortagesaktivität"},
+      "previous_night": {"name": "Beitrag der Vornacht"},
+      "recovery_index": {"name": "Erholungsindex-Beitrag"},
+      "sleep_balance": {"name": "Schlafbalance-Beitrag"},
+      "meet_daily_targets": {"name": "Beitrag tägliche Ziele"},
+      "move_every_hour": {"name": "Beitrag stündliche Bewegung"},
+      "recovery_time": {"name": "Erholungszeit-Beitrag"},
+      "stay_active": {"name": "Beitrag aktiv bleiben"},
+      "training_frequency": {"name": "Trainingshäufigkeit-Beitrag"},
+      "training_volume": {"name": "Trainingsvolumen-Beitrag"},
+      "inactivity_alerts": {"name": "Inaktivitätswarnungen"},
+      "non_wear_time": {"name": "Nichttrage-Zeit des Rings"},
+      "resting_time": {"name": "Ruhezeit"},
+      "sedentary_time": {"name": "Sitzzeit"},
+      "equivalent_walking_distance": {"name": "Äquivalente Gehstrecke"},
+      "target_meters": {"name": "Zielstrecke"}
     }
   },
   "services": {

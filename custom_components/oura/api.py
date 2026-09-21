@@ -21,6 +21,7 @@ from .const import API_BASE_URL
 _LOGGER = logging.getLogger(__name__)
 
 _HEARTRATE_FAILED_MARKER = "_heartrate_fetch_failed"
+_MAX_RATE_LIMIT_WAIT_SECONDS = 30
 
 API_ENDPOINTS: dict[str, str] = {
     "sleep": "_async_get_sleep",
@@ -153,6 +154,7 @@ class OuraApiClient:
                 params = {
                     "start_datetime": f"{current_start.isoformat()}T00:00:00",
                     "end_datetime": f"{current_end.isoformat()}T23:59:59",
+                    "fields": "timestamp,bpm",
                 }
                 try:
                     batch = await self._async_get_all_pages(url, params)
@@ -177,6 +179,7 @@ class OuraApiClient:
         params = {
             "start_datetime": f"{start_date.isoformat()}T00:00:00",
             "end_datetime": f"{end_date.isoformat()}T23:59:59",
+            "fields": "timestamp,bpm",
         }
         try:
             return {"data": await self._async_get_all_pages(url, params)}
@@ -218,7 +221,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, params)
         except ClientResponseError as err:
-            if err.status == 401:  # Feature not available
+            if err.status in (401, 403):  # Feature not available or subscription expired
                 return {"data": []}
             raise
 
@@ -236,7 +239,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, params)
         except ClientResponseError as err:
-            if err.status == 401:  # Feature not available (Gen3/Ring4 only)
+            if err.status in (401, 403):  # Feature not available (Gen3/Ring4 only) or subscription expired
                 return {"data": []}
             raise
 
@@ -254,7 +257,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, params)
         except ClientResponseError as err:
-            if err.status == 401:  # Feature not available
+            if err.status in (401, 403):  # Feature not available or subscription expired
                 return {"data": []}
             raise
 
@@ -272,7 +275,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, params)
         except ClientResponseError as err:
-            if err.status == 401:  # Feature not available
+            if err.status in (401, 403):  # Feature not available or subscription expired
                 return {"data": []}
             raise
 
@@ -295,7 +298,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, params)
         except ClientResponseError as err:
-            if err.status == 401:
+            if err.status in (401, 403):
                 return {"data": []}
             raise
 
@@ -309,7 +312,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, params)
         except ClientResponseError as err:
-            if err.status == 401:
+            if err.status in (401, 403):
                 return {"data": []}
             raise
 
@@ -323,7 +326,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, params)
         except ClientResponseError as err:
-            if err.status == 401:
+            if err.status in (401, 403):
                 return {"data": []}
             raise
 
@@ -337,7 +340,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, params)
         except ClientResponseError as err:
-            if err.status == 401:
+            if err.status in (401, 403):
                 return {"data": []}
             raise
 
@@ -351,7 +354,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, params)
         except ClientResponseError as err:
-            if err.status == 401:
+            if err.status in (401, 403):
                 return {"data": []}
             raise
 
@@ -361,7 +364,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url, {"latest": "true"})
         except ClientResponseError as err:
-            if err.status in (401, 404):
+            if err.status in (401, 403, 404):
                 return {"data": []}
             raise
 
@@ -371,7 +374,7 @@ class OuraApiClient:
         try:
             return await self._async_get(url)
         except ClientResponseError as err:
-            if err.status == 401:
+            if err.status in (401, 403):
                 return {"data": []}
             raise
 
@@ -389,7 +392,35 @@ class OuraApiClient:
         return all_data
 
     async def _async_get(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Make GET request to Oura API."""
+        """Make GET request to Oura API, retrying once on 429 per Retry-After."""
+        try:
+            return await self._async_get_request(url, params)
+        except ClientResponseError as err:
+            if err.status != 429:
+                raise
+            wait = self._rate_limit_wait_seconds(err)
+            _LOGGER.warning(
+                "Rate limited fetching %s (tier=%s); retrying once in %.1fs",
+                url,
+                err.headers.get("X-RateLimit-Tier", "unknown") if err.headers else "unknown",
+                wait,
+            )
+            await asyncio.sleep(wait)
+            return await self._async_get_request(url, params)
+
+    @staticmethod
+    def _rate_limit_wait_seconds(err: ClientResponseError) -> float:
+        """Read Retry-After if present, else fall back to the capped default wait."""
+        retry_after = err.headers.get("Retry-After") if err.headers else None
+        if retry_after is not None:
+            try:
+                return min(float(retry_after), _MAX_RATE_LIMIT_WAIT_SECONDS)
+            except ValueError:
+                pass
+        return _MAX_RATE_LIMIT_WAIT_SECONDS
+
+    async def _async_get_request(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Make a single GET request to Oura API (no retry)."""
         try:
             # Ensure token is valid and get the token data
             await self.session.async_ensure_token_valid()
@@ -417,7 +448,9 @@ class OuraApiClient:
                 response.raise_for_status()
                 return await response.json()
         except ClientResponseError as err:
-            if err.status != 401:  # 401 handled gracefully by callers for optional features
+            # 401/403 are handled gracefully by callers for optional features; 429 is
+            # retried once by _async_get. Logging those here would be noise, not signal.
+            if err.status not in (401, 403, 429):
                 _LOGGER.error("Error fetching data from %s: %s", url, err)
             raise
         except (TypeError, KeyError) as err:
@@ -432,3 +465,4 @@ class OuraApiClient:
             else:
                 _LOGGER.error(log_msg, url, err)
             raise
+

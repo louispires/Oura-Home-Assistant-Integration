@@ -17,8 +17,7 @@ from custom_components.oura.statistics import (
 
 
 def test_statistics_metadata_completeness():
-    """Test that all required sensors have metadata."""
-    # These sensors should all have metadata
+    """Test that all required sensors have metadata."""    # These sensors should all have metadata
     required_sensors = [
         "sleep_score",
         "readiness_score",
@@ -37,6 +36,55 @@ def test_statistics_metadata_completeness():
         assert "name" in metadata
         assert "has_mean" in metadata
         assert "has_sum" in metadata
+
+
+def test_openapi_1_39_sensors_have_statistics_metadata_and_mapping():
+    """New 1.39-alignment sensors (contributors + extra fields) are backfillable.
+
+    Regression guard: adding a SENSOR_TYPES entry without STATISTICS_METADATA +
+    a DATA_SOURCE_CONFIG mapping silently breaks historical import for it.
+    """
+    new_sensor_to_source = {
+        "deep_sleep_score": "sleep",
+        "rem_sleep_score": "sleep",
+        "total_sleep_score": "sleep",
+        "sleep_latency_score": "sleep",
+        "average_breath": "sleep_detail",
+        "restless_periods": "sleep_detail",
+        "sleep_score_delta": "sleep_detail",
+        "readiness_score_delta": "sleep_detail",
+        "temperature_trend_deviation": "readiness",
+        "activity_balance": "readiness",
+        "body_temperature": "readiness",
+        "previous_day_activity": "readiness",
+        "previous_night": "readiness",
+        "recovery_index": "readiness",
+        "sleep_balance": "readiness",
+        "meet_daily_targets": "activity",
+        "move_every_hour": "activity",
+        "recovery_time": "activity",
+        "stay_active": "activity",
+        "training_frequency": "activity",
+        "training_volume": "activity",
+        "inactivity_alerts": "activity",
+        "non_wear_time": "activity",
+        "resting_time": "activity",
+        "sedentary_time": "activity",
+        "equivalent_walking_distance": "activity",
+        "target_meters": "activity",
+    }
+
+    for sensor_key, source_key in new_sensor_to_source.items():
+        assert sensor_key in STATISTICS_METADATA, f"{sensor_key} missing STATISTICS_METADATA"
+        metadata = STATISTICS_METADATA[sensor_key]
+        assert "name" in metadata and "has_mean" in metadata and "has_sum" in metadata
+        # Exactly one of has_mean/has_sum is set for a plain numeric sensor.
+        assert metadata["has_mean"] != metadata["has_sum"]
+
+        mappings = DATA_SOURCE_CONFIG[source_key]["mappings"]
+        assert any(
+            mapping["sensor_key"] == sensor_key for mapping in mappings
+        ), f"{sensor_key} missing a DATA_SOURCE_CONFIG['{source_key}'] mapping"
 
 
 def test_data_source_config_structure():

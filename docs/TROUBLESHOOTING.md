@@ -1,5 +1,26 @@
 ﻿# Troubleshooting Guide
 
+## OAuth Setup Fails with "401 Unauthorized"
+
+If adding the integration fails right after you approve access on Oura's site (log shows
+`Error resolving OAuth token: 401 ... url='https://moi.ouraring.com/oauth/v2/ext/oauth-token'`
+or a bare "OAuth token rejected" abort), check the following:
+
+1. **Redirect URI**: your Oura app must register `https://my.home-assistant.io/redirect/oauth`
+   exactly — see [FIXING_REDIRECT_URI.md](FIXING_REDIRECT_URI.md).
+2. **Developer portal**: confirm which portal you registered the app on
+   (`developer.ouraring.com` vs the legacy `cloud.ouraring.com/oauth/applications`). Both are
+   supported; since v2.10.0 the integration tries `moi.ouraring.com` first (the endpoint Oura
+   actually uses today — `cloud.ouraring.com`'s own docs are stale here) and falls back to the
+   legacy endpoint automatically.
+3. **Client secret**: if it was regenerated after the app was first configured in HA, remove
+   and re-add the Application Credential with the current secret.
+4. **Debug logs**: enable `homeassistant.helpers.config_entry_oauth2_flow: debug` and
+   `custom_components.oura: debug` in `configuration.yaml` and retry — the log will show which
+   endpoint was tried and the HTTP status returned.
+
+If none of the above resolves it, open an issue with the debug log (redact your client_id).
+
 ## Removing the Integration & Your Data
 
 If you want to fully remove the integration and all locally stored Oura data from Home Assistant:

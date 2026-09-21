@@ -16,7 +16,8 @@
       "unknown": "An unexpected error occurred",
       "invalid_user_info": "Could not retrieve user information from Oura",
       "wrong_account": "You must re-authenticate with the same Oura account",
-      "reauth_successful": "Re-authentication successful"
+      "reauth_successful": "Re-authentication successful",
+      "oauth_token_rejected": "Oura rejected the token request. Check that the redirect URI registered on your Oura app is exactly https://my.home-assistant.io/redirect/oauth, that you picked the right developer portal (developer.ouraring.com vs cloud.ouraring.com), and that your client secret hasn't been regenerated."
     },
     "create_entry": {
       "default": "Successfully authenticated with Oura Ring"
@@ -87,6 +88,7 @@
       "max_heart_rate": {"name": "Maximum heart rate"},
       "heart_rate_timestamp": {"name": "Last heart rate reading"},
       "average_sleep_hrv": {"name": "Average sleep HRV"},
+      "sleep_analysis_reason": {"name": "Sleep analysis reason"},
       "lowest_sleep_heart_rate": {"name": "Lowest sleep heart rate"},
       "average_sleep_heart_rate": {"name": "Average sleep heart rate"},
       "stress_high_duration": {"name": "Stress high duration"},
@@ -116,7 +118,34 @@
       "tag_count_today": {"name": "Tag count today"},
       "rest_mode_start": {"name": "Rest mode start"},
       "rest_mode_end": {"name": "Rest mode end"},
-      "ring_battery_level": {"name": "Ring battery level"}
+      "ring_battery_level": {"name": "Ring battery level"},
+      "deep_sleep_score": {"name": "Deep sleep contribution"},
+      "rem_sleep_score": {"name": "REM sleep contribution"},
+      "total_sleep_score": {"name": "Total sleep contribution"},
+      "sleep_latency_score": {"name": "Sleep latency contribution"},
+      "average_breath": {"name": "Average breathing rate"},
+      "restless_periods": {"name": "Restless periods"},
+      "sleep_score_delta": {"name": "Sleep score delta"},
+      "readiness_score_delta": {"name": "Readiness score delta"},
+      "temperature_trend_deviation": {"name": "Temperature trend deviation"},
+      "activity_balance": {"name": "Activity balance contribution"},
+      "body_temperature": {"name": "Body temperature contribution"},
+      "previous_day_activity": {"name": "Previous day activity contribution"},
+      "previous_night": {"name": "Previous night contribution"},
+      "recovery_index": {"name": "Recovery index contribution"},
+      "sleep_balance": {"name": "Sleep balance contribution"},
+      "meet_daily_targets": {"name": "Meet daily targets contribution"},
+      "move_every_hour": {"name": "Move every hour contribution"},
+      "recovery_time": {"name": "Recovery time contribution"},
+      "stay_active": {"name": "Stay active contribution"},
+      "training_frequency": {"name": "Training frequency contribution"},
+      "training_volume": {"name": "Training volume contribution"},
+      "inactivity_alerts": {"name": "Inactivity alerts"},
+      "non_wear_time": {"name": "Ring non-wear time"},
+      "resting_time": {"name": "Resting time"},
+      "sedentary_time": {"name": "Sedentary time"},
+      "equivalent_walking_distance": {"name": "Equivalent walking distance"},
+      "target_meters": {"name": "Target distance"}
     }
   },
   "services": {

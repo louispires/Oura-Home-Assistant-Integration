@@ -16,7 +16,8 @@
       "unknown": "Ocurrió un error inesperado",
       "invalid_user_info": "No se pudo obtener la información del usuario de Oura",
       "wrong_account": "Debes reautenticarte con la misma cuenta de Oura",
-      "reauth_successful": "Reautenticación exitosa"
+      "reauth_successful": "Reautenticación exitosa",
+      "oauth_token_rejected": "Oura rechazó la solicitud del token. Verifica que el URI de redirección registrado en tu app de Oura sea exactamente https://my.home-assistant.io/redirect/oauth, que hayas elegido el portal de desarrollador correcto (developer.ouraring.com frente a cloud.ouraring.com) y que tu client secret no se haya regenerado."
     },
     "create_entry": {
       "default": "Autenticado exitosamente con Oura Ring"
@@ -115,7 +116,34 @@
       "tag_count_today": {"name": "Cantidad de etiquetas de hoy"},
       "rest_mode_start": {"name": "Inicio del modo de descanso"},
       "rest_mode_end": {"name": "Fin del modo de descanso"},
-      "ring_battery_level": {"name": "Nivel de batería del anillo"}
+      "ring_battery_level": {"name": "Nivel de batería del anillo"},
+      "deep_sleep_score": {"name": "Contribución del sueño profundo"},
+      "rem_sleep_score": {"name": "Contribución del sueño REM"},
+      "total_sleep_score": {"name": "Contribución del sueño total"},
+      "sleep_latency_score": {"name": "Contribución de la latencia del sueño"},
+      "average_breath": {"name": "Frecuencia respiratoria media"},
+      "restless_periods": {"name": "Periodos de inquietud"},
+      "sleep_score_delta": {"name": "Delta de puntuación de sueño"},
+      "readiness_score_delta": {"name": "Delta de puntuación de preparación"},
+      "temperature_trend_deviation": {"name": "Desviación de la tendencia de temperatura"},
+      "activity_balance": {"name": "Contribución del equilibrio de actividad"},
+      "body_temperature": {"name": "Contribución de la temperatura corporal"},
+      "previous_day_activity": {"name": "Contribución de la actividad del día anterior"},
+      "previous_night": {"name": "Contribución de la noche anterior"},
+      "recovery_index": {"name": "Contribución del índice de recuperación"},
+      "sleep_balance": {"name": "Contribución del equilibrio del sueño"},
+      "meet_daily_targets": {"name": "Contribución de objetivos diarios"},
+      "move_every_hour": {"name": "Contribución de moverse cada hora"},
+      "recovery_time": {"name": "Contribución del tiempo de recuperación"},
+      "stay_active": {"name": "Contribución de mantenerse activo"},
+      "training_frequency": {"name": "Contribución de la frecuencia de entrenamiento"},
+      "training_volume": {"name": "Contribución del volumen de entrenamiento"},
+      "inactivity_alerts": {"name": "Alertas de inactividad"},
+      "non_wear_time": {"name": "Tiempo sin llevar el anillo"},
+      "resting_time": {"name": "Tiempo de descanso"},
+      "sedentary_time": {"name": "Tiempo sedentario"},
+      "equivalent_walking_distance": {"name": "Distancia equivalente caminada"},
+      "target_meters": {"name": "Distancia objetivo"}
     }
   },
   "services": {

@@ -78,6 +78,18 @@ class OuraFlowHandler(
             )
         return await self.async_step_user()
 
+    async def async_step_creation(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Resolve the token, remapping HA's generic OAuth abort into an actionable one."""
+        result = await super().async_step_creation(user_input)
+        if result.get("type") == "abort" and result.get("reason") in (
+            "oauth_unauthorized",
+            "oauth_failed",
+        ):
+            return self.async_abort(reason="oauth_token_rejected")
+        return result
+
     async def async_oauth_create_entry(self, data: dict[str, Any]) -> config_entries.FlowResult:
         """Create an entry for Oura Ring."""
         # Get user info from Oura API to get unique user ID
