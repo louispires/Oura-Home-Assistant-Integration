@@ -17,6 +17,7 @@ class MockCoordinator:
     _process_data = OuraDataUpdateCoordinator._process_data
     _process_sleep_scores = OuraDataUpdateCoordinator._process_sleep_scores
     _process_sleep_details = OuraDataUpdateCoordinator._process_sleep_details
+    _process_latest_sleep_session = OuraDataUpdateCoordinator._process_latest_sleep_session
     _process_readiness = OuraDataUpdateCoordinator._process_readiness
     _process_activity = OuraDataUpdateCoordinator._process_activity
     _process_heart_rate = OuraDataUpdateCoordinator._process_heart_rate
@@ -35,6 +36,7 @@ class MockCoordinator:
     _process_ring_configuration = OuraDataUpdateCoordinator._process_ring_configuration
     _parse_api_day = staticmethod(OuraDataUpdateCoordinator._parse_api_day)
     _parse_iso_datetime = staticmethod(OuraDataUpdateCoordinator._parse_iso_datetime)
+    _parse_api_timestamp = staticmethod(OuraDataUpdateCoordinator._parse_api_timestamp)
 
 
 def test_process_sleep_scores():
@@ -812,6 +814,101 @@ def test_bedtime_no_data_no_existing():
 
     assert "bedtime_start" not in processed
     assert "bedtime_end" not in processed
+
+
+# --- Latest bedtime sensor tests (issue #74) ---
+
+def test_latest_bedtime_prefers_most_recent_nap():
+    """Latest sensors track the chronologically most recent session, incl. a later nap."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
+    main_record = {
+        "day": today,
+        "type": "long_sleep",
+        "bedtime_start": "2024-01-15T23:00:00+00:00",
+        "bedtime_end": "2024-01-16T07:00:00+00:00",
+        "total_sleep_duration": 28800,
+    }
+    later_nap = {
+        "day": today,
+        "type": "late_nap",
+        "bedtime_start": "2024-01-16T16:21:00+00:00",
+        "bedtime_end": "2024-01-16T17:21:00+00:00",
+    }
+
+    data = {"sleep_detail": {"data": [main_record, later_nap]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    # Primary bedtime still tracks long_sleep
+    assert processed["bedtime_start"] == datetime(2024, 1, 15, 23, 0, 0, tzinfo=timezone.utc)
+    # Latest tracks the most recent session (the nap)
+    assert processed["latest_bedtime_start"] == datetime(2024, 1, 16, 16, 21, 0, tzinfo=timezone.utc)
+    assert processed["latest_bedtime_end"] == datetime(2024, 1, 16, 17, 21, 0, tzinfo=timezone.utc)
+
+
+def test_latest_bedtime_in_progress_end_unavailable():
+    """In-progress latest record → start set, end left unset (unavailable)."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
+    inprogress = {
+        "day": today,
+        "type": "long_sleep",
+        "bedtime_start": "2024-01-16T23:30:00+00:00",
+        "bedtime_end": None,
+    }
+
+    data = {"sleep_detail": {"data": [inprogress]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    assert processed["latest_bedtime_start"] == datetime(2024, 1, 16, 23, 30, 0, tzinfo=timezone.utc)
+    assert "latest_bedtime_end" not in processed
+
+
+def test_latest_bedtime_ignores_deleted_and_rest():
+    """Records of type deleted/rest are not eligible as the latest session."""
+    from datetime import datetime, timezone
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date().isoformat()
+    valid = {
+        "day": today,
+        "type": "long_sleep",
+        "bedtime_start": "2024-01-16T23:00:00+00:00",
+        "bedtime_end": "2024-01-17T07:00:00+00:00",
+    }
+    rejected = {
+        "day": today,
+        "type": "rest",
+        "bedtime_start": "2024-01-17T12:00:00+00:00",
+        "bedtime_end": "2024-01-17T12:30:00+00:00",
+    }
+
+    data = {"sleep_detail": {"data": [valid, rejected]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    assert processed["latest_bedtime_start"] == datetime(2024, 1, 16, 23, 0, 0, tzinfo=timezone.utc)
+    assert processed["latest_bedtime_end"] == datetime(2024, 1, 17, 7, 0, 0, tzinfo=timezone.utc)
+
+
+def test_latest_bedtime_absent_when_no_valid_records():
+    """No eligible records → latest keys absent (sensors unavailable)."""
+    coordinator = MockCoordinator()
+    coordinator.data = None
+
+    data = {"sleep_detail": {"data": [{"type": "deleted", "bedtime_start": "2024-01-16T23:00:00+00:00"}]}}
+    processed = {}
+    coordinator._process_sleep_details(data, processed)
+
+    assert "latest_bedtime_start" not in processed
+    assert "latest_bedtime_end" not in processed
+
 
 
 # --- New tests for v2.8.0 changes ---

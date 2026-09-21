@@ -1,0 +1,10 @@
+reconcile_statistics:
+  fields:
+    days:
+      example: 7
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: days
+          mode: box

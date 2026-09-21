@@ -11,7 +11,9 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 
 - **Oura Ring 5 Compatible**: Fully tested with all Oura Ring generations including the latest Oura Ring 5
 - **OAuth2 Authentication**: Secure authentication using Home Assistant's application credentials
-- **Comprehensive Data**: 69 sensors and 2 binary sensors covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, battery, cardiovascular health, and more
+- **Comprehensive Data**: 71 sensors and 2 binary sensors covering Oura Ring sleep, readiness, activity, workout, session, tags, rest mode, stress, resilience, battery, cardiovascular health, and more
+- **Late-Data Backfill**: Automatically reconciles late-arriving Oura data into long-term statistics once per day so historical gaps are filled with the correct dates
+- **Latest Sleep Session Tracking**: New sensors expose the most recent sleep session (incl. naps) for automations independent of the primary bedtime logic
 - **HA 2026 Compatible**: Modern entity naming, translation keys, entity categories, and proper state classes
 - **Historical Data Loading**: Automatically loads 3 months of historical data on first setup (configurable 1-48 months, up to 4 years)
 - **Expanded Daily Tracking**: Adds workout, mindfulness session, tag, and rest mode tracking with historical statistics support
@@ -19,12 +21,13 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - **Multi-Account Support**: Entry-scoped unique IDs allow multiple Oura accounts
 - **HACS Compatible**: Easy installation and updates via HACS
 - **Modern Architecture**: Configuration-driven design following latest Home Assistant standards
-- **Comprehensive Testing**: 106 automated tests ensuring reliability
+- **Comprehensive Testing**: 132 automated tests ensuring reliability
 - **Efficient Updates**: Uses DataUpdateCoordinator with specialized processing methods
 
 ## Available Sensors
 
-### Sleep Sensors (17)
+### Sleep Sensors (19)
+
 - Sleep Score
 - Total Sleep Duration
 - Deep Sleep Duration
@@ -38,14 +41,17 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Deep Sleep Percentage
 - REM Sleep Percentage
 - Time in Bed
-- Bedtime Start (when you went to sleep)
-- Bedtime End (when you woke up)
+- Bedtime Start (when you went to sleep — prefers primary `long_sleep`)
+- Bedtime End (when you woke up — prefers primary `long_sleep`)
+- **Latest Bedtime Start** ✨ (timestamp of most recent sleep session, incl. naps)
+- **Latest Bedtime End** ✨ (end of most recent sleep session; unavailable until Oura provides it)
 - Low Battery Alert
 - Sleep Analysis Reason (diagnostic: how sleep was detected — foreground app sync, background detection, or bedtime edit; Ring 5 supports background detection via API 1.35+)
 
 **Note**: Sleep Efficiency now uses the actual detailed sleep efficiency percentage from Oura sleep data rather than the contributor score.
 
 ### Readiness Sensors (5)
+
 - Readiness Score
 - Temperature Deviation
 - Resting Heart Rate Score (contribution score, not actual BPM)*
@@ -55,6 +61,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 **Note**: Sensors marked with * may be unavailable if Oura doesn't have sufficient data to calculate the contributor score.
 
 ### Activity Sensors (11)
+
 - Activity Score
 - Steps
 - Active Calories
@@ -68,6 +75,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Low Activity Time (actual duration in minutes)
 
 ### Heart Rate Sensors (7)
+
 - Current Heart Rate (latest reading)
 - Average Heart Rate (rolling 24-hour window)
 - Minimum Heart Rate (rolling 24-hour window)
@@ -79,33 +87,40 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 **Note**: Heart rate data reflects cloud-synced readings, not real-time Bluetooth readings from the Oura app. Use the "Last Heart Rate Reading" diagnostic sensor to verify data recency.
 
 ### HRV Sensors (1)
+
 - Average Sleep HRV (heart rate variability during sleep)
 
 ### Stress Sensors (3) - *May be unavailable for new rings*
+
 - Stress High Duration ⚠️
 - Recovery High Duration ⚠️
 - Stress Day Summary ⚠️
 
 ### Resilience Sensors (4) - *May be unavailable for new rings*
+
 - Resilience Level
 - Sleep Recovery Score ⚠️
 - Daytime Recovery Score ⚠️
 - Stress Resilience Score ⚠️
 
 ### SpO2 Sensors (2) - *Gen3, Ring 4, and Ring 5*
+
 - SpO2 Average
 - Breathing Disturbance Index
 
 ### Fitness Sensors (3) - *Requires Oura membership*
+
 - VO2 Max ⚠️
 - Cardiovascular Age ⚠️
 - Pulse Wave Velocity (arterial stiffness in m/s, API 1.35+) ⚠️
 
 ### Sleep Optimization Sensors (2) - *May be unavailable for new rings*
+
 - Optimal Bedtime Start ⚠️
 - Optimal Bedtime End ⚠️
 
 ### Workout Sensors (6)
+
 - Workouts Today
 - Last Workout Type
 - Last Workout Distance
@@ -114,27 +129,34 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 - Last Workout Duration
 
 ### Session Sensors (2)
+
 - Mindfulness Sessions Today
 - Meditation Duration Today
 
 ### Tag Sensors (2)
+
 - Tags Today
 - Tag Count Today
 
 ### Rest Mode Sensors (2)
+
 - Rest Mode Start
 - Rest Mode End
 
 ### Ring Battery Sensors (1)
+
 - Ring Battery Level (current battery %, diagnostic)
 
 ### Binary Sensors (2)
+
 - Rest Mode
 - Ring Charging
 
-**Total: 69 sensors + 2 binary sensors**
+**Total: 71 sensors + 2 binary sensors**
 
 **Important Notes**:
+
+- **Latest Bedtime End unavailability**: When a sleep session is still in progress, `Latest Bedtime End` remains unavailable (unset) until Oura provides the end timestamp. This keeps both latest-bedtime sensors tied to the same record. Once the session ends and Oura syncs, the end timestamp becomes available.
 - Sensors marked with ⚠️ may be **unavailable** for new Oura Ring users (typically the first few weeks of usage). The Oura API does not provide data for these sensors until sufficient baseline data has been collected. This is normal behavior and they may become available over time as you continue using your ring.
 - Some sensors marked with feature requirements may return 401 Unauthorized errors if your Oura account/ring doesn't have access to those features.
 - The integration will continue to work with all available sensors - unavailable sensors simply won't display values until Oura provides data for them.
@@ -233,10 +255,12 @@ The integration polls the Oura API with a configurable update interval (default:
 2. Find "Oura Ring" and click **CONFIGURE**
 3. Set your desired update interval (1-60 minutes)
 4. Set historical data months (1-48 months, default: 3 months) - **only loaded on first setup**
-5. **Historical Data Imported**: Keep checked to prevent re-importing history. Uncheck to force re-import on next restart.
-6. Click **SUBMIT**
+5. **Statistics Reconcile Window** (new in v2.9.0): Days of recent data to re-import into long-term statistics once per day, so late-arriving Oura data backfills the correct dates (0 disables, default 7 days, max 30)
+6. **Historical Data Imported**: Keep checked to prevent re-importing history. Uncheck to force re-import on next restart.
+7. Click **SUBMIT**
 
 The integration will automatically reload with the new interval. The default 5-minute interval is optimized to:
+
 - Provide timely updates
 - Minimize API calls
 - Respect Oura's rate limits
@@ -252,6 +276,25 @@ On **first setup**, the integration automatically fetches historical data (defau
 
 After the initial historical load, the integration fetches only new data during regular updates (every 5 minutes by default), keeping API usage minimal.
 
+#### Backfill Late-Arriving Data into Long-Term Statistics (v2.9.0+)
+
+When Oura data is unavailable during polling (HA offline, API down, data delayed to Oura Cloud), it may become available later. Regular polling updates the current sensor values, but does **not** retroactively reconcile historical statistics with the original Oura timestamp.
+
+**The new reconciliation feature** automatically re-imports a bounded recent window (default: 7 days) once per calendar day:
+
+✅ Writes late-arriving data to the correct historical date  
+✅ Preserves cumulative continuity for `has_sum` statistics (e.g. steps, calories)  
+✅ Is idempotent — overlapping runs are safe (no duplicate data)  
+✅ Falls back to a full re-import via the `historical_data_imported` toggle for longer outages  
+
+**For manual control**, call the `oura.reconcile_statistics` service:
+
+```yaml
+service: oura.reconcile_statistics
+data:
+  days: 14  # optional; defaults to configured window
+```
+
 #### How It Works
 
 The integration uses Home Assistant's **Long-Term Statistics** system to store historical data:
@@ -263,6 +306,7 @@ The integration uses Home Assistant's **Long-Term Statistics** system to store h
 5. **Daily Updates**: Ongoing updates only fetch new data (typically 1 day), which is much more efficient
 
 **Benefits of Long-Term Statistics**:
+
 - 📊 Works with all history visualization cards (ApexCharts, History Graph, Statistics Graph)
 - 💾 Efficient database storage (optimized for long-term data)
 - 🔄 Properly timestamped (each data point has the correct historical date)
@@ -282,7 +326,7 @@ Track your sleep, readiness, and activity scores over the past week:
 
 <details>
 <summary>yaml</summary>
-   
+
 ```yaml
 type: custom:apexcharts-card
 header:
@@ -316,6 +360,7 @@ yaxis:
     apex_config:
       tickAmount: 5
 ```
+
 </details>
 
 #### Sleep Analysis Card
@@ -430,6 +475,7 @@ series:
       duration: 1d
       func: last
 ```
+
 </details>
 
 #### Sleep Efficiency Trend
@@ -438,7 +484,7 @@ Monitor your sleep efficiency over time:
 <img width="945" height="797" alt="image" src="https://github.com/user-attachments/assets/23d9d8cd-44ce-4944-8d21-292829208123" />
 <details>
 <summary>yaml</summary>
-   
+
 ```yaml
 type: custom:apexcharts-card
 header:
@@ -464,6 +510,7 @@ yaxis:
     apex_config:
       tickAmount: 5
 ```
+
 </details>
 
 #### Heart Rate Monitoring
@@ -472,7 +519,7 @@ Track heart rate scores and HRV:
 <img width="947" height="800" alt="image" src="https://github.com/user-attachments/assets/57401ffc-988c-4912-a71a-a81f686739f5" />
 <details>
 <summary>yaml</summary>
-   
+
 ```yaml
 type: custom:apexcharts-card
 header:
@@ -530,6 +577,7 @@ yaxis:
       title:
         text: HRV
 ```
+
 </details>
 
 #### Activity Summary
@@ -538,7 +586,7 @@ Daily steps and calories:
 <img width="938" height="803" alt="image" src="https://github.com/user-attachments/assets/675d862e-47dd-4772-a1c9-dab482d145ce" />
 <details>
 <summary>yaml</summary>
-   
+
 ```yaml
 type: custom:apexcharts-card
 header:
@@ -582,7 +630,30 @@ yaxis:
       title:
         text: Calories
 ```
+
 </details>
+
+#### Latest Sleep Session Tracking
+
+Use the new Latest Bedtime Start/End sensors in automations for sleep-based triggers (e.g., open curtains 8 hours after latest sleep starts):
+
+```yaml
+automation:
+  - alias: "Open Curtains After Latest Sleep"
+    trigger:
+      platform: template
+      value_template: |
+        {% set latest_start = states('sensor.oura_ring_latest_bedtime_start') %}
+        {% if latest_start not in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {{ (as_timestamp(now()) - as_timestamp(latest_start)) >= 28800 }}
+        {% else %}
+          false
+        {% endif %}
+    action:
+      service: cover.open_cover
+      target:
+        entity_id: cover.bedroom_curtains
+```
 
 #### Workout Summary
 
@@ -647,6 +718,7 @@ yaxis:
     opposite: true
     show: false
 ```
+
 </details>
 
 #### Mindfulness and Tags
@@ -712,6 +784,7 @@ yaxis:
     opposite: true
     show: false
 ```
+
 </details>
 
 #### Rest Mode Card
@@ -731,6 +804,7 @@ entities:
   - entity: sensor.oura_ring_rest_mode_end
     name: Rest Mode End
 ```
+
 </details>
 
 #### Temperature Deviation
@@ -739,7 +813,7 @@ Track body temperature trends:
 <img width="942" height="800" alt="image" src="https://github.com/user-attachments/assets/bb79c360-90c9-45b0-ac33-a96f7cc2ae9c" />
 <details>
 <summary>yaml</summary>
-   
+
 ```yaml
 type: custom:apexcharts-card
 header:
@@ -766,6 +840,7 @@ yaxis:
       tickAmount: 4
       decimalsInFloat: 1
 ```
+
 </details>
 
 ### Simple Entity Cards
@@ -774,7 +849,7 @@ For a quick overview without ApexCharts:
 <img width="946" height="1471" alt="image" src="https://github.com/user-attachments/assets/ac3462db-f6a0-417d-b1f4-cca43335e4cd" />
 <details>
 <summary>yaml</summary>
-   
+
 ```yaml
 type: entities
 title: Oura Ring Summary
@@ -829,6 +904,7 @@ entities:
   - entity: sensor.oura_ring_maximum_heart_rate
     secondary_info: last-changed
 ```
+
 </details>
 
 ### Gauge Cards
@@ -837,7 +913,7 @@ Visual representation of your scores:
 <img width="905" height="228" alt="image" src="https://github.com/user-attachments/assets/bc8666fd-856c-4fd5-b05e-68e587b6b2ce" />
 <details>
 <summary>yaml</summary>
-   
+
 ```yaml
 type: horizontal-stack
 cards:
@@ -872,6 +948,7 @@ cards:
       yellow: 70
       red: 0
 ```
+
 </details>
 
 ## Troubleshooting
@@ -899,10 +976,12 @@ If some sensors are not appearing:
 Some sensors may show as "unavailable" when Oura doesn't have sufficient data or hasn't established baseline measurements:
 
 **Common for all users (temporary unavailability):**
+
 - **Resting Heart Rate Score**: Requires sufficient heart rate measurements during rest periods
 - **HRV Balance Score**: Requires sufficient HRV data collection (usually from sleep)
 
 **Common for new ring users (may take weeks to become available):**
+
 - **Cardiovascular Age**: Requires extended baseline data collection
 - **VO2 Max**: Requires sufficient activity and cardiovascular data
 - **Stress/Recovery Metrics**: Stress High Duration, Recovery High Duration, Stress Day Summary
@@ -910,6 +989,7 @@ Some sensors may show as "unavailable" when Oura doesn't have sufficient data or
 - **Sleep Optimization**: Optimal Bedtime Start, Optimal Bedtime End
 
 This is normal behavior, especially:
+
 - **In the first few weeks of wearing your ring** - Most advanced metrics require baseline establishment
 - After periods of not wearing the ring
 - If you haven't had sufficient sleep for HRV measurements
@@ -930,14 +1010,14 @@ If you see rate limiting errors:
 This integration is built using modern Home Assistant patterns:
 
 - **OAuth2 Flow**: Uses Home Assistant's built-in OAuth2 implementation
-- **DataUpdateCoordinator**: Efficient data fetching with 18 specialized processing methods
+- **DataUpdateCoordinator**: Efficient data fetching with 19 specialized processing methods
 - **Configuration-Driven Design**: Maintainable, declarative structures throughout
 - **Modern Entity Standards**: `has_entity_name=True`, translation keys, entity categories
 - **Entry-Scoped IDs**: Multi-account support with proper unique ID scoping
 - **Type Hints**: Full type hint coverage for better code quality
 - **Async**: All operations are asynchronous
 - **Error Handling**: Comprehensive error handling and clean logging
-- **Test Coverage**: 106 automated tests with comprehensive fixtures
+- **Test Coverage**: 132 automated tests with comprehensive fixtures
 
 ## Contributing
 
@@ -984,7 +1064,7 @@ This project is licensed under the MIT License.
 - Original Oura Component: [nitobuendia/oura-custom-component](https://github.com/nitobuendia/oura-custom-component)
 - Oura Ring API: [Oura Cloud API Documentation](https://cloud.ouraring.com/v2/docs)
 - v2.0.0 Modernization: Comprehensive refactoring to HA 2026 standards
-- Test Infrastructure: Docker-based testing with 106 automated tests
+- Test Infrastructure: Docker-based testing with 132 automated tests
 - Development assisted by: Claude Sonnet 4.6 (Anthropic AI)
 
 ## Sponsoring

@@ -9,9 +9,11 @@ from datetime import datetime, timezone
 import logging
 from typing import Any, Callable
 
+from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.statistics import (
     async_add_external_statistics,
     async_import_statistics as async_import_statistics_ha,
+    statistics_during_period,
     StatisticData,
     StatisticMetaData,
     StatisticMeanType,
@@ -63,6 +65,10 @@ STATISTICS_METADATA = {
     "sleep_efficiency": {"name": "Sleep Efficiency", "unit": "%", "has_mean": True, "has_sum": False},
     "restfulness": {"name": "Restfulness", "unit": "%", "has_mean": True, "has_sum": False},
     "sleep_timing": {"name": "Sleep Timing", "unit": None, "has_mean": True, "has_sum": False},
+    "deep_sleep_score": {"name": "Deep Sleep Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "rem_sleep_score": {"name": "REM Sleep Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "total_sleep_score": {"name": "Total Sleep Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "sleep_latency_score": {"name": "Sleep Latency Contribution", "unit": None, "has_mean": True, "has_sum": False},
     "total_sleep_duration": {"name": "Total Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
     "deep_sleep_duration": {"name": "Deep Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
     "rem_sleep_duration": {"name": "REM Sleep Duration", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
@@ -70,18 +76,27 @@ STATISTICS_METADATA = {
     "awake_time": {"name": "Awake Time", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
     "sleep_latency": {"name": "Sleep Latency", "unit": UnitOfTime.MINUTES, "has_mean": True, "has_sum": False},
     "time_in_bed": {"name": "Time in Bed", "unit": UnitOfTime.HOURS, "has_mean": False, "has_sum": True},
-    "bedtime_start": {"name": "Bedtime Start", "unit": None, "has_mean": False, "has_sum": False},
-    "bedtime_end": {"name": "Bedtime End", "unit": None, "has_mean": False, "has_sum": False},
     "deep_sleep_percentage": {"name": "Deep Sleep Percentage", "unit": "%", "has_mean": True, "has_sum": False},
     "rem_sleep_percentage": {"name": "REM Sleep Percentage", "unit": "%", "has_mean": True, "has_sum": False},
     "average_sleep_hrv": {"name": "Average Sleep HRV", "unit": "ms", "has_mean": True, "has_sum": False},
     "lowest_sleep_heart_rate": {"name": "Lowest Sleep Heart Rate", "unit": "bpm", "has_mean": True, "has_sum": False},
     "average_sleep_heart_rate": {"name": "Average Sleep Heart Rate", "unit": "bpm", "has_mean": True, "has_sum": False},
+    "average_breath": {"name": "Average Breathing Rate", "unit": "breaths/min", "has_mean": True, "has_sum": False},
+    "restless_periods": {"name": "Restless Periods", "unit": None, "has_mean": True, "has_sum": False},
+    "sleep_score_delta": {"name": "Sleep Score Delta", "unit": None, "has_mean": True, "has_sum": False},
+    "readiness_score_delta": {"name": "Readiness Score Delta", "unit": None, "has_mean": True, "has_sum": False},
     "readiness_score": {"name": "Readiness Score", "unit": None, "has_mean": True, "has_sum": False},
     "temperature_deviation": {"name": "Temperature Deviation", "unit": UnitOfTemperature.CELSIUS, "has_mean": True, "has_sum": False},
+    "temperature_trend_deviation": {"name": "Temperature Trend Deviation", "unit": UnitOfTemperature.CELSIUS, "has_mean": True, "has_sum": False},
     "resting_heart_rate": {"name": "Resting Heart Rate Score", "unit": None, "has_mean": True, "has_sum": False},
     "hrv_balance": {"name": "HRV Balance Score", "unit": None, "has_mean": True, "has_sum": False},
     "sleep_regularity": {"name": "Sleep Regularity Score", "unit": None, "has_mean": True, "has_sum": False},
+    "activity_balance": {"name": "Activity Balance Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "body_temperature": {"name": "Body Temperature Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "previous_day_activity": {"name": "Previous Day Activity Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "previous_night": {"name": "Previous Night Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "recovery_index": {"name": "Recovery Index Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "sleep_balance": {"name": "Sleep Balance Contribution", "unit": None, "has_mean": True, "has_sum": False},
     "activity_score": {"name": "Activity Score", "unit": None, "has_mean": True, "has_sum": False},
     "steps": {"name": "Steps", "unit": "steps", "has_mean": False, "has_sum": True},
     "active_calories": {"name": "Active Calories", "unit": UnitOfEnergy.KILO_CALORIE, "has_mean": False, "has_sum": True},
@@ -90,6 +105,18 @@ STATISTICS_METADATA = {
     "met_min_high": {"name": "High Activity MET Minutes", "unit": None, "has_mean": False, "has_sum": True},
     "met_min_medium": {"name": "Medium Activity MET Minutes", "unit": None, "has_mean": False, "has_sum": True},
     "met_min_low": {"name": "Low Activity MET Minutes", "unit": None, "has_mean": False, "has_sum": True},
+    "meet_daily_targets": {"name": "Meet Daily Targets Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "move_every_hour": {"name": "Move Every Hour Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "recovery_time": {"name": "Recovery Time Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "stay_active": {"name": "Stay Active Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "training_frequency": {"name": "Training Frequency Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "training_volume": {"name": "Training Volume Contribution", "unit": None, "has_mean": True, "has_sum": False},
+    "inactivity_alerts": {"name": "Inactivity Alerts", "unit": None, "has_mean": False, "has_sum": True},
+    "non_wear_time": {"name": "Ring Non-Wear Time", "unit": UnitOfTime.MINUTES, "has_mean": False, "has_sum": True},
+    "resting_time": {"name": "Resting Time", "unit": UnitOfTime.MINUTES, "has_mean": False, "has_sum": True},
+    "sedentary_time": {"name": "Sedentary Time", "unit": UnitOfTime.MINUTES, "has_mean": False, "has_sum": True},
+    "equivalent_walking_distance": {"name": "Equivalent Walking Distance", "unit": UnitOfLength.METERS, "has_mean": False, "has_sum": True},
+    "target_meters": {"name": "Target Distance", "unit": UnitOfLength.METERS, "has_mean": True, "has_sum": False},
     "average_heart_rate": {"name": "Average Heart Rate", "unit": "bpm", "has_mean": True, "has_sum": False},
     "min_heart_rate": {"name": "Minimum Heart Rate", "unit": "bpm", "has_mean": True, "has_sum": False},
     "max_heart_rate": {"name": "Maximum Heart Rate", "unit": "bpm", "has_mean": True, "has_sum": False},
@@ -124,12 +151,15 @@ DATA_SOURCE_CONFIG = {
             {"sensor_key": "sleep_score", "api_path": "score"},
             {"sensor_key": "restfulness", "api_path": "contributors.restfulness"},
             {"sensor_key": "sleep_timing", "api_path": "contributors.timing"},
+            {"sensor_key": "deep_sleep_score", "api_path": "contributors.deep_sleep"},
+            {"sensor_key": "rem_sleep_score", "api_path": "contributors.rem_sleep"},
+            {"sensor_key": "total_sleep_score", "api_path": "contributors.total_sleep"},
+            {"sensor_key": "sleep_latency_score", "api_path": "contributors.latency"},
         ],
     },
     "sleep_detail": {
         "mappings": [
             {"sensor_key": "sleep_efficiency", "api_path": "efficiency"},
-            {"sensor_key": "total_sleep_duration", "api_path": "total_sleep_duration", "transform": "seconds_to_hours"},
             {"sensor_key": "deep_sleep_duration", "api_path": "deep_sleep_duration", "transform": "seconds_to_hours"},
             {"sensor_key": "rem_sleep_duration", "api_path": "rem_sleep_duration", "transform": "seconds_to_hours"},
             {"sensor_key": "light_sleep_duration", "api_path": "light_sleep_duration", "transform": "seconds_to_hours"},
@@ -139,8 +169,10 @@ DATA_SOURCE_CONFIG = {
             {"sensor_key": "average_sleep_hrv", "api_path": "average_hrv"},
             {"sensor_key": "lowest_sleep_heart_rate", "api_path": "lowest_heart_rate"},
             {"sensor_key": "average_sleep_heart_rate", "api_path": "average_heart_rate"},
-            {"sensor_key": "bedtime_start", "api_path": "bedtime_start", "transform": "iso_to_datetime"},
-            {"sensor_key": "bedtime_end", "api_path": "bedtime_end", "transform": "iso_to_datetime"},
+            {"sensor_key": "average_breath", "api_path": "average_breath"},
+            {"sensor_key": "restless_periods", "api_path": "restless_periods"},
+            {"sensor_key": "sleep_score_delta", "api_path": "sleep_score_delta"},
+            {"sensor_key": "readiness_score_delta", "api_path": "readiness_score_delta"},
         ],
         "computed": [
             {
@@ -157,9 +189,16 @@ DATA_SOURCE_CONFIG = {
         "mappings": [
             {"sensor_key": "readiness_score", "api_path": "score"},
             {"sensor_key": "temperature_deviation", "api_path": "temperature_deviation"},
+            {"sensor_key": "temperature_trend_deviation", "api_path": "temperature_trend_deviation"},
             {"sensor_key": "resting_heart_rate", "api_path": "contributors.resting_heart_rate"},
             {"sensor_key": "hrv_balance", "api_path": "contributors.hrv_balance"},
             {"sensor_key": "sleep_regularity", "api_path": "contributors.sleep_regularity"},
+            {"sensor_key": "activity_balance", "api_path": "contributors.activity_balance"},
+            {"sensor_key": "body_temperature", "api_path": "contributors.body_temperature"},
+            {"sensor_key": "previous_day_activity", "api_path": "contributors.previous_day_activity"},
+            {"sensor_key": "previous_night", "api_path": "contributors.previous_night"},
+            {"sensor_key": "recovery_index", "api_path": "contributors.recovery_index"},
+            {"sensor_key": "sleep_balance", "api_path": "contributors.sleep_balance"},
         ],
     },
     "activity": {
@@ -172,6 +211,18 @@ DATA_SOURCE_CONFIG = {
             {"sensor_key": "met_min_high", "api_path": "high_activity_met_minutes"},
             {"sensor_key": "met_min_medium", "api_path": "medium_activity_met_minutes"},
             {"sensor_key": "met_min_low", "api_path": "low_activity_met_minutes"},
+            {"sensor_key": "meet_daily_targets", "api_path": "contributors.meet_daily_targets"},
+            {"sensor_key": "move_every_hour", "api_path": "contributors.move_every_hour"},
+            {"sensor_key": "recovery_time", "api_path": "contributors.recovery_time"},
+            {"sensor_key": "stay_active", "api_path": "contributors.stay_active"},
+            {"sensor_key": "training_frequency", "api_path": "contributors.training_frequency"},
+            {"sensor_key": "training_volume", "api_path": "contributors.training_volume"},
+            {"sensor_key": "inactivity_alerts", "api_path": "inactivity_alerts"},
+            {"sensor_key": "non_wear_time", "api_path": "non_wear_time", "transform": "seconds_to_minutes"},
+            {"sensor_key": "resting_time", "api_path": "resting_time", "transform": "seconds_to_minutes"},
+            {"sensor_key": "sedentary_time", "api_path": "sedentary_time", "transform": "seconds_to_minutes"},
+            {"sensor_key": "equivalent_walking_distance", "api_path": "equivalent_walking_distance"},
+            {"sensor_key": "target_meters", "api_path": "target_meters"},
         ],
     },
     "heartrate": {
@@ -260,12 +311,83 @@ async def async_import_statistics(
                 _LOGGER.debug("Imported %d %s statistics", stats_count, source_key)
             continue
 
+        if source_key == "sleep_detail":
+            # Total Sleep Duration should reflect every valid session that day
+            # (naps included), unlike the other sleep_detail stats below which
+            # only represent the primary record (issue #73).
+            total_sleep_points = [
+                {"timestamp": timestamp, "value": _apply_transformation(seconds, "seconds_to_hours")}
+                for day, seconds in _sum_total_sleep_duration_by_day(source_data).items()
+                if (timestamp := _parse_date_to_timestamp(day))
+            ]
+            if total_sleep_points:
+                await _create_statistic(hass, "total_sleep_duration", total_sleep_points, entry)
+                total_stats += len(total_sleep_points)
+
+            # A day can have multiple sessions (naps + overnight sleep); daily
+            # statistics have one timestamp per day, so pick a single record
+            # to represent it (mirrors the primary Bedtime Start/End long_sleep
+            # preference from issue #49).
+            source_data = _collapse_sleep_detail_by_day(source_data)
+
         # Use generic processor
         stats_count = await _process_generic_statistics(hass, source_data, config, entry)
         total_stats += stats_count
         _LOGGER.debug("Imported %d %s statistics", stats_count, source_key)
 
     _LOGGER.info("Successfully imported %d total statistics data points", total_stats)
+
+
+def _collapse_sleep_detail_by_day(
+    sleep_detail_data: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Reduce sleep_detail records to one per Oura day for daily statistics.
+
+    Prefers the "long_sleep" record; falls back to the longest
+    total_sleep_duration when a day has no long_sleep record.
+    """
+    by_day: dict[str, dict[str, Any]] = {}
+    for record in sleep_detail_data:
+        day = record.get("day")
+        if not day:
+            continue
+        existing = by_day.get(day)
+        if existing is None:
+            by_day[day] = record
+            continue
+        if existing.get("type") == "long_sleep":
+            continue
+        if record.get("type") == "long_sleep":
+            by_day[day] = record
+            continue
+        if record.get("total_sleep_duration", 0) > existing.get("total_sleep_duration", 0):
+            by_day[day] = record
+
+    return list(by_day.values())
+
+
+# Sleep record types counted as real sleep sessions (matches the live latest-
+# bedtime session filter in coordinator.py).
+_VALID_SLEEP_TYPES = ("long_sleep", "sleep", "late_nap")
+
+
+def _sum_total_sleep_duration_by_day(
+    sleep_detail_data: list[dict[str, Any]],
+) -> dict[str, int]:
+    """Sum total_sleep_duration across all valid sleep records for each day.
+
+    Every distinct session (naps included) contributes to the day's total,
+    unlike _collapse_sleep_detail_by_day which picks a single representative
+    record for the other sleep_detail statistics (issue #73).
+    """
+    totals: dict[str, int] = {}
+    for record in sleep_detail_data:
+        day = record.get("day")
+        duration = record.get("total_sleep_duration")
+        if not day or duration is None or record.get("type") not in _VALID_SLEEP_TYPES:
+            continue
+        totals[day] = totals.get(day, 0) + duration
+    return totals
 
 
 async def _process_generic_statistics(
@@ -582,6 +704,36 @@ async def _process_rest_mode_statistics(
     return stats_count
 
 
+async def _get_baseline_sum(
+    hass: HomeAssistant, statistic_id: str, before: datetime
+) -> float:
+    """Return the cumulative sum stored immediately before ``before``.
+
+    Used to preserve sum continuity when re-importing a recent window. Returns
+    0.0 when no earlier statistic exists (e.g. a full historical import).
+    """
+    try:
+        stats = await get_instance(hass).async_add_executor_job(
+            statistics_during_period,
+            hass,
+            datetime(1970, 1, 1, tzinfo=timezone.utc),
+            before,
+            {statistic_id},
+            "month",
+            None,
+            {"sum"},
+        )
+    except Exception as err:  # recorder not ready / no history yet
+        _LOGGER.debug("Could not read baseline sum for %s: %s", statistic_id, err)
+        return 0.0
+
+    rows = stats.get(statistic_id)
+    if not rows:
+        return 0.0
+    last_sum = rows[-1].get("sum")
+    return float(last_sum) if last_sum is not None else 0.0
+
+
 async def _create_statistic(
     hass: HomeAssistant,
     sensor_key: str,
@@ -650,6 +802,13 @@ async def _create_statistic(
     statistics = []
     sorted_data_points = sorted(data_points, key=lambda point: point["timestamp"])
     running_sum = 0.0
+    if metadata["has_sum"]:
+        # Seed from the cumulative sum stored just before this window so that
+        # reconciling a recent (trailing-edge) window preserves sum continuity.
+        # A full historical import finds no prior row and starts at zero.
+        running_sum = await _get_baseline_sum(
+            hass, statistic_id, sorted_data_points[0]["timestamp"]
+        )
     for point in sorted_data_points:
         value = point["value"]
         if metadata["has_sum"]:

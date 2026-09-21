@@ -22,12 +22,15 @@ ATTRIBUTION: Final = "Data provided by Oura Ring"
 CONF_UPDATE_INTERVAL: Final = "update_interval"
 CONF_HISTORICAL_MONTHS: Final = "historical_months"
 CONF_HISTORICAL_DATA_IMPORTED: Final = "historical_data_imported"
+CONF_STATISTICS_RECONCILE_DAYS: Final = "statistics_reconcile_days"
 
 # OAuth2 Constants
 OAUTH2_AUTHORIZE: Final = "https://cloud.ouraring.com/oauth/authorize"
-# Legacy endpoint (cloud.ouraring.com apps); new-portal apps use the fallback below.
-OAUTH2_TOKEN: Final = "https://api.ouraring.com/oauth/token"
-OAUTH2_TOKEN_FALLBACK: Final = "https://moi.ouraring.com/oauth/v2/ext/oauth-token"
+# moi.ouraring.com is the live token endpoint for both legacy- and new-portal apps
+# (cloud.ouraring.com's own docs are stale here). api.ouraring.com/oauth/token is kept
+# only as a fallback for the few legacy-portal apps still rejected by moi.
+OAUTH2_TOKEN: Final = "https://moi.ouraring.com/oauth/v2/ext/oauth-token"
+OAUTH2_TOKEN_LEGACY: Final = "https://api.ouraring.com/oauth/token"
 OAUTH2_SCOPES: Final = [
     "email",
     "personal",
@@ -53,6 +56,11 @@ DEFAULT_HISTORICAL_MONTHS: Final = 3  # Fetch 3 months by default (90 days)
 MIN_HISTORICAL_MONTHS: Final = 1  # Minimum 1 month
 MAX_HISTORICAL_MONTHS: Final = 48  # Maximum 48 months (4 years)
 
+# Statistics reconciliation (backfill late-arriving data into long-term statistics)
+DEFAULT_STATISTICS_RECONCILE_DAYS: Final = 7  # Re-import last 7 days once per day
+MIN_STATISTICS_RECONCILE_DAYS: Final = 0  # 0 disables reconciliation
+MAX_STATISTICS_RECONCILE_DAYS: Final = 30  # Cap to bound API/DB load
+
 # Sensor types
 SENSOR_TYPES: Final = {
     # Sleep sensors
@@ -66,14 +74,25 @@ SENSOR_TYPES: Final = {
     "restfulness": {"name": "Restfulness", "icon": "mdi:bed", "unit": "%", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep"},
     "sleep_latency": {"name": "Sleep Latency", "icon": "mdi:timer", "unit": "min", "device_class": "duration", "state_class": "measurement", "entity_category": None, "data_category": "sleep_detail"},
     "sleep_timing": {"name": "Sleep Timing", "icon": "mdi:clock-check", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep"},
+    "deep_sleep_score": {"name": "Deep Sleep Contribution", "icon": "mdi:sleep", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep"},
+    "rem_sleep_score": {"name": "REM Sleep Contribution", "icon": "mdi:sleep", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep"},
+    "total_sleep_score": {"name": "Total Sleep Contribution", "icon": "mdi:sleep", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep"},
+    "sleep_latency_score": {"name": "Sleep Latency Contribution", "icon": "mdi:timer", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep"},
     "deep_sleep_percentage": {"name": "Deep Sleep Percentage", "icon": "mdi:percent", "unit": "%", "device_class": None, "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "sleep_detail"},
     "rem_sleep_percentage": {"name": "REM Sleep Percentage", "icon": "mdi:percent", "unit": "%", "device_class": None, "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "sleep_detail"},
     "time_in_bed": {"name": "Time in Bed", "icon": "mdi:bed-clock", "unit": "h", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "sleep_detail"},
     "bedtime_start": {"name": "Bedtime Start", "icon": "mdi:sleep", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "sleep_detail"},
     "bedtime_end": {"name": "Bedtime End", "icon": "mdi:sleep-off", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "sleep_detail"},
+    # Most recent sleep session (any type incl. naps) - updates as soon as Oura exposes it
+    "latest_bedtime_start": {"name": "Latest Bedtime Start", "icon": "mdi:bed-clock", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "sleep_detail"},
+    "latest_bedtime_end": {"name": "Latest Bedtime End", "icon": "mdi:bed-clock", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": None, "data_category": "sleep_detail"},
     "low_battery_alert": {"name": "Low Battery Alert", "icon": "mdi:battery-alert", "unit": None, "device_class": None, "state_class": None, "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "sleep_detail"},
     "lowest_sleep_heart_rate": {"name": "Lowest Sleep Heart Rate", "icon": "mdi:heart-minus", "unit": "bpm", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep_detail"},
     "average_sleep_heart_rate": {"name": "Average Sleep Heart Rate", "icon": "mdi:heart", "unit": "bpm", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep_detail"},
+    "average_breath": {"name": "Average Breathing Rate", "icon": "mdi:lungs", "unit": "breaths/min", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "sleep_detail"},
+    "restless_periods": {"name": "Restless Periods", "icon": "mdi:sleep-off", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "sleep_detail"},
+    "sleep_score_delta": {"name": "Sleep Score Delta", "icon": "mdi:delta", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "sleep_detail"},
+    "readiness_score_delta": {"name": "Readiness Score Delta", "icon": "mdi:delta", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "sleep_detail"},
 
     # Readiness sensors
     "readiness_score": {"name": "Readiness Score", "icon": "mdi:heart-pulse", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
@@ -81,6 +100,13 @@ SENSOR_TYPES: Final = {
     "resting_heart_rate": {"name": "Resting Heart Rate Score", "icon": "mdi:heart", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
     "hrv_balance": {"name": "HRV Balance Score", "icon": "mdi:heart-pulse", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
     "sleep_regularity": {"name": "Sleep Regularity Score", "icon": "mdi:calendar-clock", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
+    "temperature_trend_deviation": {"name": "Temperature Trend Deviation", "icon": "mdi:thermometer-lines", "unit": "°C", "device_class": "temperature", "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
+    "activity_balance": {"name": "Activity Balance Contribution", "icon": "mdi:scale-balance", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
+    "body_temperature": {"name": "Body Temperature Contribution", "icon": "mdi:thermometer", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
+    "previous_day_activity": {"name": "Previous Day Activity Contribution", "icon": "mdi:run", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
+    "previous_night": {"name": "Previous Night Contribution", "icon": "mdi:weather-night", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
+    "recovery_index": {"name": "Recovery Index Contribution", "icon": "mdi:refresh", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
+    "sleep_balance": {"name": "Sleep Balance Contribution", "icon": "mdi:scale-balance", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "readiness"},
 
     # Activity sensors
     "activity_score": {"name": "Activity Score", "icon": "mdi:run", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "activity"},
@@ -94,6 +120,18 @@ SENSOR_TYPES: Final = {
     "high_activity_time": {"name": "High Activity Time", "icon": "mdi:run-fast", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
     "medium_activity_time": {"name": "Medium Activity Time", "icon": "mdi:run", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
     "low_activity_time": {"name": "Low Activity Time", "icon": "mdi:walk", "unit": "min", "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
+    "meet_daily_targets": {"name": "Meet Daily Targets Contribution", "icon": "mdi:target", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "activity"},
+    "move_every_hour": {"name": "Move Every Hour Contribution", "icon": "mdi:timer-alert-outline", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "activity"},
+    "recovery_time": {"name": "Recovery Time Contribution", "icon": "mdi:refresh", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "activity"},
+    "stay_active": {"name": "Stay Active Contribution", "icon": "mdi:run-fast", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "activity"},
+    "training_frequency": {"name": "Training Frequency Contribution", "icon": "mdi:calendar-refresh", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "activity"},
+    "training_volume": {"name": "Training Volume Contribution", "icon": "mdi:weight-lifter", "unit": None, "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "activity"},
+    "inactivity_alerts": {"name": "Inactivity Alerts", "icon": "mdi:alert-circle-outline", "unit": None, "device_class": None, "state_class": "total", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "activity"},
+    "non_wear_time": {"name": "Ring Non-Wear Time", "icon": "mdi:watch-vibrate-off", "unit": UnitOfTime.MINUTES, "device_class": "duration", "state_class": "total", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "activity"},
+    "resting_time": {"name": "Resting Time", "icon": "mdi:bed", "unit": UnitOfTime.MINUTES, "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
+    "sedentary_time": {"name": "Sedentary Time", "icon": "mdi:seat", "unit": UnitOfTime.MINUTES, "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
+    "equivalent_walking_distance": {"name": "Equivalent Walking Distance", "icon": "mdi:walk", "unit": UnitOfLength.METERS, "device_class": "distance", "state_class": "measurement", "entity_category": None, "data_category": "activity"},
+    "target_meters": {"name": "Target Distance", "icon": "mdi:bullseye", "unit": UnitOfLength.METERS, "device_class": "distance", "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "activity"},
 
     # Heart Rate sensors (from heartrate endpoint - more granular data)
     "current_heart_rate": {"name": "Current Heart Rate", "icon": "mdi:heart-pulse", "unit": "bpm", "device_class": None, "state_class": "measurement", "entity_category": None, "data_category": "heartrate"},

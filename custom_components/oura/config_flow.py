@@ -18,12 +18,16 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_HISTORICAL_MONTHS,
     CONF_HISTORICAL_DATA_IMPORTED,
+    CONF_STATISTICS_RECONCILE_DAYS,
     DEFAULT_UPDATE_INTERVAL,
     DEFAULT_HISTORICAL_MONTHS,
+    DEFAULT_STATISTICS_RECONCILE_DAYS,
     MIN_UPDATE_INTERVAL,
     MAX_UPDATE_INTERVAL,
     MIN_HISTORICAL_MONTHS,
     MAX_HISTORICAL_MONTHS,
+    MIN_STATISTICS_RECONCILE_DAYS,
+    MAX_STATISTICS_RECONCILE_DAYS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -73,6 +77,25 @@ class OuraFlowHandler(
                 data_schema=vol.Schema({}),
             )
         return await self.async_step_user()
+
+    async def async_step_creation(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Resolve the token, remapping HA's generic OAuth abort into an actionable one."""
+        result = await super().async_step_creation(user_input)
+        if result.get("type") == "abort" and result.get("reason") in (
+            "oauth_unauthorized",
+            "oauth_failed",
+        ):
+            # URLs must be placeholders, not inline in strings.json (hassfest TRANSLATIONS rule).
+            return self.async_abort(
+                reason="oauth_token_rejected",
+                description_placeholders={
+                    "redirect_uri": "https://my.home-assistant.io/redirect/oauth",
+                    "portals": "developer.ouraring.com or cloud.ouraring.com",
+                },
+            )
+        return result
 
     async def async_oauth_create_entry(self, data: dict[str, Any]) -> config_entries.FlowResult:
         """Create an entry for Oura Ring."""
@@ -158,6 +181,19 @@ class OuraOptionsFlowHandler(config_entries.OptionsFlow):
                     ): vol.All(
                         vol.Coerce(int),
                         vol.Range(min=MIN_HISTORICAL_MONTHS, max=MAX_HISTORICAL_MONTHS),
+                    ),
+                    vol.Optional(
+                        CONF_STATISTICS_RECONCILE_DAYS,
+                        default=self.config_entry.options.get(
+                            CONF_STATISTICS_RECONCILE_DAYS,
+                            DEFAULT_STATISTICS_RECONCILE_DAYS,
+                        ),
+                    ): vol.All(
+                        vol.Coerce(int),
+                        vol.Range(
+                            min=MIN_STATISTICS_RECONCILE_DAYS,
+                            max=MAX_STATISTICS_RECONCILE_DAYS,
+                        ),
                     ),
                     vol.Optional(
                         CONF_HISTORICAL_DATA_IMPORTED,

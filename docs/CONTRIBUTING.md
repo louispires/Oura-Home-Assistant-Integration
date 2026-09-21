@@ -22,17 +22,19 @@ Thank you for your interest in contributing! This document provides guidelines f
 ### Local Development
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/louispires/oura-v2-custom-component.git
 cd oura-v2-custom-component
 ```
 
-2. Copy the integration to your Home Assistant config:
+1. Copy the integration to your Home Assistant config:
+
 ```bash
 cp -r custom_components/oura /path/to/homeassistant/config/custom_components/
 ```
 
-3. Restart Home Assistant
+1. Restart Home Assistant
 
 ## Code Standards
 
@@ -54,6 +56,7 @@ cp -r custom_components/oura /path/to/homeassistant/config/custom_components/
 ### Code Formatting
 
 We use:
+
 - `black` for code formatting
 - `isort` for import sorting
 - `pylint` for linting
@@ -63,38 +66,45 @@ We use:
 
 ### Automated Tests
 
-This project includes a comprehensive test suite with 45 tests covering all major components.
+This project includes a comprehensive automated test suite covering API behavior, coordinator processing, statistics import/reconciliation, setup flow, sensors, and diagnostics.
 
 #### Running Tests with Docker (Recommended)
 
 ```bash
 # Run all tests
-docker-compose -f docker-compose.test.yml run --rm test pytest tests/ -v
+docker compose -f docker-compose.test.yml run --rm test
 
 # Run specific test file
-docker-compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor.py -v
+docker compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor.py -v
 
 # Run specific test
-docker-compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor.py::test_sensor_device_info -v
+docker compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor.py::test_sensor_device_info -v
 ```
 
 #### Test Structure
 
-- **`tests/test_sensor.py`**: Sensor entity tests (7 tests)
-- **`tests/test_statistics.py`**: Statistics module tests (6 tests)
-- **`tests/test_coordinator.py`**: Data coordinator tests (13 tests)
-- **`tests/test_entity_categories.py`**: Entity categorization tests (6 tests)
-- **`tests/test_integration_setup.py`**: Fixture validation tests (7 tests)
+- **`tests/test_api.py`**: API client behavior and endpoint handling
+- **`tests/test_api_reauth_propagation.py`**: OAuth reauth propagation paths
+- **`tests/test_application_credentials.py`**: OAuth endpoint behavior and fallback logic
+- **`tests/test_config_flow.py`**: Config flow and options flow
+- **`tests/test_coordinator.py`**: Coordinator data processing and orchestration
+- **`tests/test_entity_categories.py`**: Entity category and state class checks
+- **`tests/test_integration_setup.py`**: Setup/unload lifecycle validation
+- **`tests/test_ring_battery.py`**: Ring battery and charging diagnostics
+- **`tests/test_sensor.py`**: Sensor entity behavior and attributes
+- **`tests/test_statistics.py`**: Statistics metadata and transformation logic
+- **`tests/test_statistics_import.py`**: Historical and reconciliation import coverage
 
 #### Test Fixtures
 
 The `tests/conftest.py` file provides reusable fixtures:
+
 - `mock_config_entry`: Configured ConfigEntry with OAuth2 tokens
 - `mock_hass`: Mocked HomeAssistant instance
 - `mock_oura_api_client`: API client with sample data
 - `mock_coordinator_with_data`: Coordinator with pre-populated data
 
-See `tests/README.md` for detailed testing documentation.
+See `tests/README.md` for detailed testing documentation and the latest per-file count.
 
 ### Manual Testing
 
@@ -124,6 +134,7 @@ Before submitting a pull request:
 ```
 
 Types:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -133,6 +144,7 @@ Types:
 - `chore`: Maintenance tasks
 
 Example:
+
 ```
 feat: Add heart rate variability sensor
 
@@ -174,4 +186,4 @@ If you have questions about contributing, feel free to:
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
-Thank you for contributing! 
+Thank you for contributing!

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import logging
 
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_entry_oauth2_flow, config_validation as cv
 
 from .api import OuraApiClient
@@ -14,8 +15,10 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_HISTORICAL_MONTHS,
     CONF_HISTORICAL_DATA_IMPORTED,
+    CONF_STATISTICS_RECONCILE_DAYS,
     DEFAULT_UPDATE_INTERVAL,
     DEFAULT_HISTORICAL_MONTHS,
+    DEFAULT_STATISTICS_RECONCILE_DAYS,
 )
 from .coordinator import OuraDataUpdateCoordinator
 
@@ -23,8 +26,38 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
+SERVICE_RECONCILE_STATISTICS = "reconcile_statistics"
+ATTR_DAYS = "days"
+RECONCILE_SERVICE_SCHEMA = vol.Schema(
+    {vol.Optional(ATTR_DAYS): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440))}
+)
+
 # Config entry only (no YAML configuration)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+def _async_register_services(hass: HomeAssistant) -> None:
+    """Register integration services once for the domain."""
+    if hass.services.has_service(DOMAIN, SERVICE_RECONCILE_STATISTICS):
+        return
+
+    async def _handle_reconcile(call: ServiceCall) -> None:
+        """Backfill recent Oura data into long-term statistics on demand."""
+        requested_days = call.data.get(ATTR_DAYS)
+        for coordinator in hass.data.get(DOMAIN, {}).values():
+            if not isinstance(coordinator, OuraDataUpdateCoordinator):
+                continue
+            days = requested_days or coordinator.entry.options.get(
+                CONF_STATISTICS_RECONCILE_DAYS, DEFAULT_STATISTICS_RECONCILE_DAYS
+            )
+            await coordinator.async_reconcile_statistics(max(1, days))
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RECONCILE_STATISTICS,
+        _handle_reconcile,
+        schema=RECONCILE_SERVICE_SCHEMA,
+    )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -87,6 +120,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    _async_register_services(hass)
+
     return True
 
 
@@ -99,5 +134,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
+        # Remove the domain service once the last entry is gone.
+        if not hass.data[DOMAIN]:
+            hass.services.async_remove(DOMAIN, SERVICE_RECONCILE_STATISTICS)
 
     return unload_ok

@@ -42,12 +42,14 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 ### Method 2: Manual Installation
 
 1. **Download Files**:
+
    ```bash
    cd /config
    git clone https://github.com/louispires/oura-v2-custom-component.git
    ```
 
 2. **Copy Integration**:
+
    ```bash
    cp -r oura-v2-custom-component/custom_components/oura custom_components/
    ```
@@ -60,24 +62,24 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 
 1. Go to [Oura Cloud](https://developer.ouraring.com)
 2. Log in with your Oura account credentials
-3. Navigate to **Applications** or visit: https://developer.ouraring.com/applications
+3. Navigate to **Applications** or visit: <https://developer.ouraring.com/applications>
 
 ### Step 2: Create OAuth Application
 
 1. Click **Create a New Application**
 
 2. Fill in the application details:
-   
+
    **Application Name**: `Home Assistant`
-   
+
    **Application Website**: `https://your-home-assistant-url.com`
    - Use your actual Home Assistant URL
-   - Can be local (http://192.168.1.100:8123) or external (https://ha.example.com)
-   
+   - Can be local (<http://192.168.1.100:8123>) or external (<https://ha.example.com>)
+
    **Redirect URI**: `https://my.home-assistant.io/redirect/oauth`
    - This integration always uses Home Assistant's built-in "My Home Assistant" redirect relay for OAuth, regardless of whether your instance is local-only, on Nabu Casa, or on DuckDNS/a custom domain.
    - You do not need to register your own local IP, hostname, or Nabu Casa/DuckDNS URL as the Redirect URI — only the URL above. Note: Oura's developer portal will not accept non-localhost `http://` URIs, so a local IP such as `http://192.168.1.100:8123/...` cannot be registered there anyway.
-   
+
    **Application Scope**: Select all available scopes:
    - `email`
    - `personal`
@@ -113,7 +115,7 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 3. **Important**: You may see either:
    - A dropdown to select an integration (select **Oura Ring**)
    - OR a generic form asking for application details
-   
+
    If you see the generic form, this is normal! Just proceed to the next step.
 
 4. Enter your credentials:
@@ -160,11 +162,12 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 
 1. Click on the Oura Ring integration
 2. You should see multiple entities listed:
-   - Sleep sensors (16)
-   - Readiness sensors (4)
-   - Activity sensors (8)
-   - Heart Rate sensors (6)
-   - And more (Total: 48 sensors)
+   - Sleep and readiness sensors
+   - Activity and heart-rate sensors
+   - Stress/resilience and advanced metrics
+   - Workout/session/tag/rest-mode sensors
+   - Ring battery diagnostics and binary sensors
+   - Current total: 71 sensors + 2 binary sensors
 
 ### Test Data Retrieval
 
@@ -175,11 +178,12 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 
 ### Example Sensors to Check
 
-- `sensor.oura_sleep_score`
-- `sensor.oura_readiness_score`
-- `sensor.oura_activity_score`
-- `sensor.oura_steps`
-- `sensor.oura_total_sleep_duration`
+- `sensor.oura_ring_sleep_score`
+- `sensor.oura_ring_readiness_score`
+- `sensor.oura_ring_activity_score`
+- `sensor.oura_ring_steps`
+- `sensor.oura_ring_total_sleep_duration`
+- `sensor.oura_ring_latest_bedtime_start`
 
 ## Troubleshooting
 
@@ -188,6 +192,7 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 **Problem**: Can't find Oura Ring when adding integration
 
 **Solutions**:
+
 1. Restart Home Assistant after installation
 2. Clear browser cache (Ctrl+F5 or Cmd+Shift+R)
 3. Check that files are in `config/custom_components/oura/`
@@ -204,6 +209,7 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 **Problem**: Authentication fails during OAuth flow
 
 **Solutions**:
+
 1. Verify Client ID and Client Secret are correct
 2. Check that application is active in Oura Cloud
 3. Ensure all required scopes are selected
@@ -214,13 +220,16 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 **Problem**: Integration configured but sensors unavailable
 
 **Solutions**:
+
 1. Wait 5 minutes for first data update
 2. Ensure Oura Ring is synced with mobile app
 3. Check Home Assistant logs for API errors:
+
    ```
    Settings → System → Logs
    Search for "oura"
    ```
+
 4. Verify you have recent data in the Oura mobile app
 5. Check API rate limits haven't been exceeded
 
@@ -229,10 +238,11 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 **Problem**: Sensors show old data or no data
 
 **Solutions**:
+
 1. Sync your Oura Ring with the mobile app
 2. Wait for the next update cycle (default: 5 minutes)
 3. Restart the integration:
-   - Settings  Devices & Services
+   - Settings → Devices & Services
    - Click on Oura Ring
    - Click  (three dots)
    - Select "Reload"
@@ -242,6 +252,7 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
 **Problem**: "Token expired" or authentication errors in logs
 
 **Solutions**:
+
 1. Token should auto-refresh - wait a few minutes
 2. If persists, remove and re-add integration
 3. Verify application is still active in Oura Cloud
@@ -267,6 +278,7 @@ The integration will automatically reload with the new interval.
 Enable debug logging for detailed troubleshooting:
 
 1. Edit `configuration.yaml`:
+
    ```yaml
    logger:
      default: info
@@ -277,6 +289,17 @@ Enable debug logging for detailed troubleshooting:
 2. Restart Home Assistant
 
 3. Check logs at **Settings**  **System**  **Logs**
+
+### Reconcile Late-Arriving Statistics Data
+
+If you had downtime or delayed Oura cloud ingestion and need to backfill long-term statistics:
+
+1. Go to **Developer Tools** → **Actions**
+2. Choose service: `oura.reconcile_statistics`
+3. Optional: set `days` to your desired reconciliation window
+4. Run service
+
+You can also configure daily reconciliation in integration options via **Statistics Reconcile Window**.
 
 ## Getting Help
 
@@ -294,6 +317,7 @@ If you're still experiencing issues:
 ## Next Steps
 
 Once installed:
+
 - [Create dashboard cards](../README.md#dashboard-examples)
 - [Set up automations](../README.md#usage)
 - [Explore all available sensors](../README.md#available-sensors)

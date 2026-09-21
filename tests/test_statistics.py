@@ -1,6 +1,6 @@
 """Tests for Oura Ring statistics module."""
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -8,6 +8,7 @@ from custom_components.oura.statistics import (
     STATISTICS_METADATA,
     DATA_SOURCE_CONFIG,
     _create_statistic,
+    _get_baseline_sum,
     _parse_date_to_timestamp,
     _apply_transformation,
     _compute_percentage,
@@ -16,8 +17,7 @@ from custom_components.oura.statistics import (
 
 
 def test_statistics_metadata_completeness():
-    """Test that all required sensors have metadata."""
-    # These sensors should all have metadata
+    """Test that all required sensors have metadata."""    # These sensors should all have metadata
     required_sensors = [
         "sleep_score",
         "readiness_score",
@@ -36,6 +36,55 @@ def test_statistics_metadata_completeness():
         assert "name" in metadata
         assert "has_mean" in metadata
         assert "has_sum" in metadata
+
+
+def test_openapi_1_39_sensors_have_statistics_metadata_and_mapping():
+    """New 1.39-alignment sensors (contributors + extra fields) are backfillable.
+
+    Regression guard: adding a SENSOR_TYPES entry without STATISTICS_METADATA +
+    a DATA_SOURCE_CONFIG mapping silently breaks historical import for it.
+    """
+    new_sensor_to_source = {
+        "deep_sleep_score": "sleep",
+        "rem_sleep_score": "sleep",
+        "total_sleep_score": "sleep",
+        "sleep_latency_score": "sleep",
+        "average_breath": "sleep_detail",
+        "restless_periods": "sleep_detail",
+        "sleep_score_delta": "sleep_detail",
+        "readiness_score_delta": "sleep_detail",
+        "temperature_trend_deviation": "readiness",
+        "activity_balance": "readiness",
+        "body_temperature": "readiness",
+        "previous_day_activity": "readiness",
+        "previous_night": "readiness",
+        "recovery_index": "readiness",
+        "sleep_balance": "readiness",
+        "meet_daily_targets": "activity",
+        "move_every_hour": "activity",
+        "recovery_time": "activity",
+        "stay_active": "activity",
+        "training_frequency": "activity",
+        "training_volume": "activity",
+        "inactivity_alerts": "activity",
+        "non_wear_time": "activity",
+        "resting_time": "activity",
+        "sedentary_time": "activity",
+        "equivalent_walking_distance": "activity",
+        "target_meters": "activity",
+    }
+
+    for sensor_key, source_key in new_sensor_to_source.items():
+        assert sensor_key in STATISTICS_METADATA, f"{sensor_key} missing STATISTICS_METADATA"
+        metadata = STATISTICS_METADATA[sensor_key]
+        assert "name" in metadata and "has_mean" in metadata and "has_sum" in metadata
+        # Exactly one of has_mean/has_sum is set for a plain numeric sensor.
+        assert metadata["has_mean"] != metadata["has_sum"]
+
+        mappings = DATA_SOURCE_CONFIG[source_key]["mappings"]
+        assert any(
+            mapping["sensor_key"] == sensor_key for mapping in mappings
+        ), f"{sensor_key} missing a DATA_SOURCE_CONFIG['{source_key}'] mapping"
 
 
 def test_data_source_config_structure():
@@ -60,6 +109,88 @@ def test_sleep_efficiency_uses_sleep_detail_mapping():
 
     assert all(mapping["sensor_key"] != "sleep_efficiency" for mapping in sleep_mappings)
     assert {"sensor_key": "sleep_efficiency", "api_path": "efficiency"} in sleep_detail_mappings
+
+
+def test_bedtime_timestamps_excluded_from_statistics():
+    """Bedtime Start/End are timestamps and cannot be long-term statistics (issue #73)."""
+    sleep_detail_mappings = DATA_SOURCE_CONFIG["sleep_detail"]["mappings"]
+
+    assert all(mapping["sensor_key"] != "bedtime_start" for mapping in sleep_detail_mappings)
+    assert all(mapping["sensor_key"] != "bedtime_end" for mapping in sleep_detail_mappings)
+    assert "bedtime_start" not in STATISTICS_METADATA
+    assert "bedtime_end" not in STATISTICS_METADATA
+
+
+def test_collapse_sleep_detail_by_day_prefers_long_sleep():
+    """Same-day nap + overnight sleep collapse to a single long_sleep record (issue #73)."""
+    from custom_components.oura.statistics import _collapse_sleep_detail_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "long_sleep", "total_sleep_duration": 28800},
+        {"day": "2024-01-15", "type": "late_nap", "total_sleep_duration": 3600},
+        {"day": "2024-01-16", "type": "sleep", "total_sleep_duration": 1800},
+    ]
+
+    collapsed = _collapse_sleep_detail_by_day(records)
+
+    by_day = {record["day"]: record for record in collapsed}
+    assert len(collapsed) == 2
+    assert by_day["2024-01-15"]["type"] == "long_sleep"
+    assert by_day["2024-01-16"]["type"] == "sleep"
+
+
+def test_collapse_sleep_detail_by_day_falls_back_to_longest():
+    """Without a long_sleep record, the longest session for the day wins."""
+    from custom_components.oura.statistics import _collapse_sleep_detail_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "late_nap", "total_sleep_duration": 1800},
+        {"day": "2024-01-15", "type": "sleep", "total_sleep_duration": 3600},
+    ]
+
+    collapsed = _collapse_sleep_detail_by_day(records)
+
+    assert len(collapsed) == 1
+    assert collapsed[0]["total_sleep_duration"] == 3600
+
+
+def test_total_sleep_duration_not_in_collapsed_mapping():
+    """Total Sleep Duration is summed separately, not read off the single collapsed record (issue #73)."""
+    sleep_detail_mappings = DATA_SOURCE_CONFIG["sleep_detail"]["mappings"]
+
+    assert all(mapping["sensor_key"] != "total_sleep_duration" for mapping in sleep_detail_mappings)
+    assert "total_sleep_duration" in STATISTICS_METADATA
+
+
+def test_sum_total_sleep_duration_by_day_includes_naps():
+    """Nap + overnight sleep on the same day both contribute to the day's total (issue #73)."""
+    from custom_components.oura.statistics import _sum_total_sleep_duration_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "long_sleep", "total_sleep_duration": 18120},  # 5h02m
+        {"day": "2024-01-15", "type": "late_nap", "total_sleep_duration": 1800},     # 30m
+        {"day": "2024-01-16", "type": "sleep", "total_sleep_duration": 3600},
+    ]
+
+    totals = _sum_total_sleep_duration_by_day(records)
+
+    assert totals["2024-01-15"] == 19920  # 5h32m
+    assert totals["2024-01-16"] == 3600
+
+
+def test_sum_total_sleep_duration_by_day_ignores_invalid_types():
+    """Records with a type outside the valid-sleep set don't contribute to the sum."""
+    from custom_components.oura.statistics import _sum_total_sleep_duration_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "long_sleep", "total_sleep_duration": 3600},
+        {"day": "2024-01-15", "type": "rest", "total_sleep_duration": 999999},
+        {"day": "2024-01-15", "total_sleep_duration": 999999},  # missing type
+    ]
+
+    totals = _sum_total_sleep_duration_by_day(records)
+
+    assert totals["2024-01-15"] == 3600
 
 
 def test_timestamp_parsing():
@@ -244,4 +375,55 @@ async def test_create_statistic_builds_cumulative_sum(mock_hass, mock_config_ent
     assert [point["start"].day for point in statistics] == [1, 2, 3]
     assert [point["state"] for point in statistics] == [100, 200, 300]
     assert [point["sum"] for point in statistics] == [100, 300, 600]
+
+
+@pytest.mark.anyio
+async def test_create_statistic_seeds_sum_from_baseline(mock_hass, mock_config_entry):
+    """Reconciling a recent window continues the cumulative sum from the prior total."""
+    data_points = [
+        {"timestamp": datetime(2024, 1, 4, 12, 0, 0, tzinfo=timezone.utc), "value": 100},
+        {"timestamp": datetime(2024, 1, 5, 12, 0, 0, tzinfo=timezone.utc), "value": 200},
+    ]
+
+    with patch("custom_components.oura.statistics.er.async_get") as mock_er_get, \
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha, \
+         patch("custom_components.oura.statistics._get_baseline_sum", new=AsyncMock(return_value=1000.0)):
+        mock_registry = MagicMock()
+        mock_er_get.return_value = mock_registry
+        mock_registry.async_get_entity_id.return_value = "sensor.oura_ring_steps"
+
+        await _create_statistic(mock_hass, "steps", data_points, mock_config_entry)
+
+    _, _, statistics = mock_import_ha.call_args.args
+    # Sums continue from the 1000.0 baseline instead of restarting at zero
+    assert [point["sum"] for point in statistics] == [1100, 1300]
+
+
+@pytest.mark.anyio
+async def test_get_baseline_sum_returns_last_prior_sum(mock_hass):
+    """Baseline is the cumulative sum of the most recent row before the window."""
+    before = datetime(2024, 1, 5, 12, 0, 0, tzinfo=timezone.utc)
+    recorder = MagicMock()
+    recorder.async_add_executor_job = AsyncMock(
+        return_value={"sensor.oura_ring_steps": [{"sum": 500.0}, {"sum": 900.0}]}
+    )
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=recorder):
+        baseline = await _get_baseline_sum(mock_hass, "sensor.oura_ring_steps", before)
+
+    assert baseline == 900.0
+
+
+@pytest.mark.anyio
+async def test_get_baseline_sum_zero_when_no_history(mock_hass):
+    """No prior statistics → baseline of 0.0 (full historical import behaviour)."""
+    before = datetime(2024, 1, 5, 12, 0, 0, tzinfo=timezone.utc)
+    recorder = MagicMock()
+    recorder.async_add_executor_job = AsyncMock(return_value={})
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=recorder):
+        baseline = await _get_baseline_sum(mock_hass, "sensor.oura_ring_steps", before)
+
+    assert baseline == 0.0
+
 

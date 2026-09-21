@@ -1,294 +1,145 @@
-﻿# Quick Reference Guide
+# Quick Reference Guide
 
 ## Configuration URLs
 
-- **Oura Cloud Dashboard**: https://developer.ouraring.com
-- **OAuth Applications**: https://developer.ouraring.com/applications
-- **API Documentation**: https://cloud.ouraring.com/v2/docs
+- **Oura Developer Portal**: <https://developer.ouraring.com>
+- **OAuth Applications**: <https://developer.ouraring.com/applications>
+- **API Documentation**: <https://cloud.ouraring.com/v2/docs>
 
 ## Home Assistant Paths
 
-- **Application Credentials**: Settings  Devices & Services  Application Credentials
-- **Add Integration**: Settings  Devices & Services  Add Integration
-- **Logs**: Settings  System  Logs
-- **Developer Tools**: Developer Tools  States
+- **Application Credentials**: Settings -> Devices & Services -> Application Credentials
+- **Add Integration**: Settings -> Devices & Services -> Add Integration
+- **Configure Integration Options**: Settings -> Devices & Services -> Oura Ring -> Configure
+- **Logs**: Settings -> System -> Logs
+- **Developer Tools**: Developer Tools -> States
 
-## Redirect URI Format
+## Redirect URI (Important)
 
+Use this exact URI in Oura app settings:
+
+```text
+https://my.home-assistant.io/redirect/oauth
 ```
-https://YOUR-HA-URL/auth/external/callback
-```
 
-### Examples:
-
-- **Nabu Casa**: `https://abcdef12345.ui.nabu.casa/auth/external/callback`
-- **DuckDNS**: `https://yourdomain.duckdns.org/auth/external/callback`
-- **Local**: `http://192.168.1.100:8123/auth/external/callback`
-- **Custom Domain**: `https://home.example.com/auth/external/callback`
+Do **not** register your local URL, DuckDNS URL, or Nabu Casa URL as Redirect URI for this integration.
 
 ## Required OAuth Scopes
 
-When creating the Oura application, select these scopes:
-- `email` - Email address
-- `personal` - Personal information (age, gender, weight, height)
-- `daily` - Daily sleep, activity, and readiness data
-- `heartrate` - Heart rate data
-- `workout` - Workout sessions
-- `session` - Guided and unguided sessions
-- `tag` - User-entered tags
-- `spo2` - Blood oxygen data (Gen3 and Ring 4 only)
-- `ring_configuration` - Ring configuration information
-- `stress` - Daily stress and recovery data
-- `heart_health` - Cardiovascular health data (VO2 Max, CVA)
+- `email`
+- `personal`
+- `daily`
+- `heartrate`
+- `workout`
+- `session`
+- `tag`
+- `spo2`
+- `ring_configuration`
+- `stress`
+- `heart_health`
 
-## Sensor Entity IDs
+## Entity Summary
 
-### Sleep Sensors
-```
+- **Sensors**: 71
+- **Binary sensors**: 2
+- **Total entities**: 73
+
+## Key Entity IDs
+
+### Sleep
+
+```text
 sensor.oura_ring_sleep_score
-sensor.oura_ring_total_sleep_duration
-sensor.oura_ring_deep_sleep_duration
-sensor.oura_ring_rem_sleep_duration
-sensor.oura_ring_light_sleep_duration
-sensor.oura_ring_awake_time
-sensor.oura_ring_sleep_efficiency
-sensor.oura_ring_restfulness
-sensor.oura_ring_sleep_latency
-sensor.oura_ring_sleep_timing
-sensor.oura_ring_deep_sleep_percentage
-sensor.oura_ring_rem_sleep_percentage
-sensor.oura_ring_time_in_bed
 sensor.oura_ring_bedtime_start
 sensor.oura_ring_bedtime_end
+sensor.oura_ring_latest_bedtime_start
+sensor.oura_ring_latest_bedtime_end
+sensor.oura_ring_sleep_analysis_reason
 sensor.oura_ring_low_battery_alert
 ```
 
-### Readiness Sensors
-```
+### Readiness / Activity
+
+```text
 sensor.oura_ring_readiness_score
 sensor.oura_ring_temperature_deviation
-sensor.oura_ring_resting_heart_rate
-sensor.oura_ring_hrv_balance
-```
-
-### Activity Sensors
-```
 sensor.oura_ring_activity_score
 sensor.oura_ring_steps
 sensor.oura_ring_active_calories
 sensor.oura_ring_total_calories
 sensor.oura_ring_target_calories
-sensor.oura_ring_high_activity_time
-sensor.oura_ring_medium_activity_time
-sensor.oura_ring_low_activity_time
+sensor.oura_ring_met_min_high
+sensor.oura_ring_met_min_medium
+sensor.oura_ring_met_min_low
 ```
 
-### Heart Rate Sensors
-```
+### Heart / Recovery
+
+```text
 sensor.oura_ring_current_heart_rate
 sensor.oura_ring_average_heart_rate
 sensor.oura_ring_min_heart_rate
 sensor.oura_ring_max_heart_rate
-sensor.oura_ring_lowest_sleep_heart_rate
-sensor.oura_ring_average_sleep_heart_rate
-```
-
-### HRV Sensors
-```
+sensor.oura_ring_heart_rate_timestamp
 sensor.oura_ring_average_sleep_hrv
 ```
 
-## Common Tasks
+### Workout / Session / Tag / Rest Mode
 
-### Reload Integration
+```text
+sensor.oura_ring_workouts_today
+sensor.oura_ring_last_workout_type
+sensor.oura_ring_last_workout_distance
+sensor.oura_ring_mindfulness_sessions_today
+sensor.oura_ring_meditation_duration_today
+sensor.oura_ring_tags_today
+sensor.oura_ring_tag_count_today
+sensor.oura_ring_rest_mode_start
+sensor.oura_ring_rest_mode_end
+binary_sensor.oura_ring_rest_mode
+binary_sensor.oura_ring_ring_charging
+```
 
-1. Settings  Devices & Services
-2. Find "Oura Ring"
-3. Click  (three dots)
-4. Select "Reload"
+### Ring Battery
 
-### Remove Integration
+```text
+sensor.oura_ring_ring_battery_level
+```
 
-1. Settings  Devices & Services
-2. Find "Oura Ring"
-3. Click  (three dots)
-4. Select "Delete"
+For the complete list, see [README.md](../README.md#available-sensors).
 
-### Enable Debug Logging
+## Statistics Reconciliation
 
-Add to `configuration.yaml`:
+To backfill late-arriving data into long-term statistics:
+
 ```yaml
-logger:
-  default: info
-  logs:
-    custom_components.oura: debug
+service: oura.reconcile_statistics
+data:
+  days: 14  # optional
 ```
 
-Then restart Home Assistant.
+Also configurable via integration options: **Statistics Reconcile Window**.
 
-### View Sensor History
+## Test Commands
 
-1. Go to any dashboard
-2. Click on a sensor entity
-3. View the history graph
-4. Or use: Developer Tools  States  Select entity  History
+```bash
+# Full suite
 
-## Update Schedule
+docker compose -f docker-compose.test.yml run --rm test
 
-- **Default Interval**: 5 minutes (configurable)
-- **First Update**: Within 5 minutes of setup
-- **Change Interval**: Settings → Devices & Services → Oura Ring → CONFIGURE
-- **Range**: 1-60 minutes
-- **Historical Data**: Configure months (1-48) and toggle re-import
+# Single file
 
-## API Endpoints Used
-
-The integration fetches data from these Oura v2 API endpoints:
-
-- `https://api.ouraring.com/v2/usercollection/daily_sleep`
-- `https://api.ouraring.com/v2/usercollection/daily_readiness`
-- `https://api.ouraring.com/v2/usercollection/daily_activity`
-
-## File Locations
-
-### HACS Installation
+docker compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor.py -v
 ```
-config/
-  custom_components/
-    oura/
-      __init__.py
-      api.py
-      application_credentials.py
-      config_flow.py
-      const.py
-      coordinator.py
-      manifest.json
-      sensor.py
-      strings.json
-      translations/
-        en.json
-```
-
-### Configuration Storage
-```
-config/
-  .storage/
-    core.config_entries
-    application_credentials
-```
-
-## Troubleshooting Quick Checks
-
-1.  Integration installed in `config/custom_components/oura/`
-2.  Home Assistant restarted after installation
-3.  OAuth app created in Oura Cloud
-4.  Client ID and Secret added to Application Credentials
-5.  Redirect URI matches exactly in both places
-6.  All required scopes selected in Oura Cloud
-7.  Oura Ring synced with mobile app
-8.  Recent data available in Oura mobile app
-
-## Useful YAML Snippets
-
-### Dashboard Card - Entities
-```yaml
-type: entities
-title: Oura Ring
-entities:
-  - entity: sensor.oura_ring_sleep_score
-    name: Sleep Score
-  - entity: sensor.oura_ring_readiness_score
-    name: Readiness Score
-  - entity: sensor.oura_ring_activity_score
-    name: Activity Score
-  - entity: sensor.oura_ring_steps
-    name: Steps Today
-  - entity: sensor.oura_ring_total_sleep_duration
-    name: Sleep Duration
-```
-
-### Dashboard Card - Glance
-```yaml
-type: glance
-title: Oura Scores
-entities:
-  - entity: sensor.oura_ring_sleep_score
-    name: Sleep
-  - entity: sensor.oura_ring_readiness_score
-    name: Readiness
-  - entity: sensor.oura_ring_activity_score
-    name: Activity
-```
-
-### Automation - Low Sleep Alert
-```yaml
-automation:
-  - alias: "Oura - Low Sleep Alert"
-    trigger:
-      - platform: state
-        entity_id: sensor.oura_ring_sleep_score
-    condition:
-      - condition: numeric_state
-        entity_id: sensor.oura_ring_sleep_score
-        below: 70
-    action:
-      - service: notify.mobile_app
-        data:
-          title: "Sleep Alert"
-          message: "Your sleep score is {{ states('sensor.oura_ring_sleep_score') }}. Consider taking it easy today."
-```
-
-### Automation - Activity Goal Met
-```yaml
-automation:
-  - alias: "Oura - Activity Goal Met"
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.oura_ring_steps
-        above: 10000
-    action:
-      - service: notify.mobile_app
-        data:
-          title: "Great Job!"
-          message: "You've reached your step goal with {{ states('sensor.oura_ring_steps') }} steps!"
-```
-
-### Template Sensor - Sleep Quality
-```yaml
-template:
-  - sensor:
-      - name: "Oura Sleep Quality"
-        unique_id: oura_sleep_quality
-        state: >
-          {% set score = states('sensor.oura_ring_sleep_score') | int(0) %}
-          {% if score >= 85 %}
-            Excellent
-          {% elif score >= 70 %}
-            Good
-          {% elif score >= 55 %}
-            Fair
-          {% else %}
-            Poor
-          {% endif %}
-        icon: mdi:sleep
-```
-
-## Support Resources
-
-- **Installation Guide**: [INSTALLATION.md](INSTALLATION.md)
-- **Full README**: [README.md](../README.md)
-- **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
-- **GitHub Issues**: https://github.com/louispires/oura-v2-custom-component/issues
-- **Home Assistant Docs**: https://www.home-assistant.io/integrations/
-- **Oura API Docs**: https://cloud.ouraring.com/v2/docs
 
 ## Version Information
 
-- **Integration Version**: 1.0.0
-- **Minimum HA Version**: 2024.1.0
-- **API Version**: v2
-- **Python Version**: 3.11+
+- **Integration Version**: 2.9.0
+- **Test Suite Status**: 132 passing tests (latest full Docker run)
+- **API Version**: Oura v2
 
----
+## Support
 
-**Quick Tip**: Bookmark this page for easy reference!
+- **Installation Guide**: [INSTALLATION.md](INSTALLATION.md)
+- **Troubleshooting**: [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+- **Issues**: <https://github.com/louispires/oura-v2-custom-component/issues>

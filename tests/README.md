@@ -80,7 +80,7 @@ This directory contains the automated test suite and live diagnostic scripts for
 
 These scripts run against real Oura credentials and are not part of the automated suite. They are not collected by pytest.
 
-- **`live_heartrate_test.py`** — fetches live heart rate data and reports freshness and pagination. Requires `OURA_TOKEN` (Personal Access Token).
+- **`live_heartrate_test.py`** — fetches live heart rate data and reports freshness and pagination. Requires `OURA_TOKEN` (OAuth2 access token; personal access tokens were deprecated in December 2025).
 - **`live_token_endpoint_test.py`** — probes both OAuth token endpoints to determine which one accepts your app's refresh token (useful for diagnosing new-portal vs legacy-portal apps). Requires `OURA_CLIENT_ID`, `OURA_CLIENT_SECRET`, `OURA_REFRESH_TOKEN`.
 - **`get_refresh_token.py`** — runs a local OAuth2 authorization code flow to obtain a refresh token from scratch. Requires `OURA_CLIENT_ID`, `OURA_CLIENT_SECRET`, and `http://localhost:8765/callback` registered as a redirect URI in your Oura app.
 

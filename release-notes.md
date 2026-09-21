@@ -1,4 +1,89 @@
-﻿# Oura Ring v2 Integration v2.8.7
+﻿# Oura Ring v2 Integration v2.10.0
+
+> **Includes everything from v2.9.0**, which only ever shipped as release candidates. Upgrading from v2.8.7 gets you the Latest Bedtime sensors ([#74](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/74)) and statistics reconciliation ([#73](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/73)) as well — see the v2.9.0 section below.
+
+## 🐛 FIXES IN v2.10.0 (#75)
+
+- **Fixed**: OAuth setup failed with `401, message='Unauthorized', url='https://moi.ouraring.com/oauth/v2/ext/oauth-token'` for new (and some legacy) developer-portal apps. Root cause: the integration tried the legacy `api.ouraring.com/oauth/token` endpoint first; when it rejected the authorization code, Oura revoked the single-use code (per RFC 6749 §4.1.2), so the fallback retry against `moi.ouraring.com` then failed too even though it would have accepted the original code.
+- **Changed**: `moi.ouraring.com/oauth/v2/ext/oauth-token` is now the primary token endpoint (it is the endpoint Oura's own infrastructure actually uses today, despite `cloud.ouraring.com`'s docs still listing the legacy one); `api.ouraring.com/oauth/token` remains as an automatic fallback for the shrinking set of apps still rejected by `moi`.
+- **Added**: a new `oauth_token_rejected` setup-abort message that names the likely causes (wrong developer portal, redirect URI must be exactly `https://my.home-assistant.io/redirect/oauth`, regenerated client secret) instead of a bare generic OAuth error.
+- **Added**: redacted error logging (host, grant type, HTTP status — never tokens or secrets) on token request failures, to make future reports diagnosable from the log alone.
+
+## ✨ NEW IN v2.10.0 — Oura OpenAPI 1.39 alignment
+
+### Resilience: rate limiting and subscription handling
+
+- **429 Too Many Requests**: the client now honours the `Retry-After` header and retries once (capped at 30s) before giving up, instead of treating every rate-limit hit as a hard failure. Historical imports spanning many months are the primary beneficiary.
+- **403 Forbidden**: treated the same as 401 on optional/Gen3/subscription-gated endpoints (resilience, SpO2, VO2 Max, cardiovascular age, workouts, sessions, tags, rest mode, ring configuration/battery) — an expired Oura subscription now degrades to empty data instead of a logged error.
+
+### ~27 new sensors from readiness/sleep/activity contributor breakdowns
+
+- **Sleep**: Average Breathing Rate, Restless Periods, Sleep Score Delta, Readiness Score Delta, plus sleep-contribution scores (Deep Sleep, REM Sleep, Total Sleep, Sleep Latency contributions).
+- **Readiness**: Temperature Trend Deviation, plus all remaining contributor scores (Activity Balance, Body Temperature, Previous Day Activity, Previous Night, Recovery Index, Sleep Balance).
+- **Activity**: all six contributor scores (Meet Daily Targets, Move Every Hour, Recovery Time, Stay Active, Training Frequency, Training Volume) plus Inactivity Alerts, Ring Non-Wear Time, Resting Time, Sedentary Time, Equivalent Walking Distance, and Target Distance.
+- All new numeric sensors are backfilled into long-term statistics the same as existing ones.
+
+### Efficiency
+
+- The heart rate endpoint now requests only the `timestamp` and `bpm` fields it actually uses, shrinking the payload on every 5-minute poll.
+
+### Housekeeping
+
+- Personal access tokens (deprecated by Oura in December 2025) are no longer referenced in setup docs or the live test scripts — OAuth2 only.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 161 automated tests passing (up from 133): OAuth endpoint-order regression tests, 429/403 handling, heart-rate field trimming, new-sensor statistics coverage, and a strings.json/translations parity guard (which also caught and fixed a pre-existing missing `sleep_analysis_reason` entry in `translations/en.json`).
+- ✅ Full Docker test suite: all tests pass
+
+# Oura Ring v2 Integration v2.9.0
+
+## 🐛 FIXES IN v2.9.0-rc3 (reconciliation feedback from #73)
+
+- **Fixed**: `Total Sleep Duration` historical statistics only reflected the primary `long_sleep` record for a day, dropping any naps recorded the same day (e.g. a 30-minute nap plus a 5h02m overnight sleep reported 5h02m instead of the actual 5h32m). `Total Sleep Duration` is now summed across every valid sleep record (`long_sleep`, `sleep`, `late_nap`) for the Oura day, so late-arriving naps correctly add to the day's total on the next reconciliation.
+- All other sleep_detail statistics (`Sleep Efficiency`, `Deep/REM/Light Sleep Duration`, `Awake Time`, `Time in Bed`, sleep HRV/heart rate, and the deep/REM sleep percentages) are unaffected and continue to reflect the primary `long_sleep` record, consistent with the primary Bedtime Start/End semantics from #49.
+- 139 automated tests passing (added 5 new statistics tests covering the day-level sleep duration sum).
+
+## ✨ NEW IN v2.9.0
+
+### Latest Bedtime Start/End sensors for automation based on most recent sleep session (#74)
+
+**Two new timestamp sensors** track the chronologically most recent sleep session (incl. naps), independent of the primary long_sleep logic:
+
+- **Latest Bedtime Start** — `bedtime_start` of the most recent valid Oura sleep record (type: `long_sleep`, `sleep`, or `late_nap`)
+- **Latest Bedtime End** — `bedtime_end` of that same record; remains unavailable (unset) until Oura provides it, keeping both sensors tied to the same sleep session
+
+**Use case**: Automations can now trigger ~8 hours after the actual start of your latest sleep session (even if it's a nap), without reintroducing nap-overwriting behavior from [#49](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/49).
+
+**Existing behavior**: The primary `Bedtime Start` / `Bedtime End` sensors continue to prefer the `long_sleep` type, unchanged.
+
+### Backfill late-arriving Oura data into long-term statistics (#73)
+
+**Automatic daily reconciliation** ensures that data arriving late to Oura Cloud is written to long-term statistics with the correct historical date, not left as gaps:
+
+- **Reconcile window**: Once per calendar day, the integration re-imports the last 7 days (default; 0–30 days configurable) of Oura data into statistics. This is an idempotent upsert by `(statistic_id, start)`, so overlapping runs are safe.
+- **Sum continuity**: Cumulative statistics (`has_sum`) automatically seed from the prior stored sum, so reconciling a recent window continues the running total instead of restarting at zero.
+- **Graceful degradation**: A full historical re-import (via the `historical_data_imported` toggle) is still the fallback for recovering data missed during outages longer than the reconcile window.
+- **Manual service**: Call `oura.reconcile_statistics` (with optional `days` parameter) to force an on-demand reconciliation over any window (1–1440 days).
+
+**Configuration**: New option `statistics_reconcile_days` in **Settings** → **Devices & Services** → **Oura Ring** → **CONFIGURE**. Default 7 days; set to 0 to disable.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 132 automated tests passing (added 4 new coordinator tests for latest-bedtime selection, 3 new statistics tests for baseline sum continuity and reconciliation)
+- ✅ Full Docker test suite: all tests pass
+- ✅ Latest bedtime selection logic: verified for naps later than long_sleep, in-progress records (end unavailable), and deleted/rest exclusion
+- ✅ Statistics reconciliation: verified baseline-seeded sums, no-history fallback to 0, and once-per-day gating
+
+## 🐛 FIXES IN v2.9.0-rc2 (reconciliation feedback from #73)
+
+- **Fixed**: `Bedtime Start` / `Bedtime End` long-term statistics rows were created with `state`/`mean`/`sum`/`min`/`max` all `NULL`. These are timestamp values and cannot be represented as long-term statistics; they're now excluded from the statistics import (live sensors are unaffected).
+- **Fixed**: Days with multiple sleep sessions (e.g. a nap and an overnight sleep) collided on the same daily statistics timestamp, corrupting cumulative sums (including the reported negative `Total Sleep Duration` sums). Daily sleep statistics now collapse to one record per day, preferring `long_sleep` (consistent with the primary Bedtime Start/End semantics from #49), falling back to the longest session.
+- 135 automated tests passing (added 3 new statistics tests covering the above).
+
+---
+
+# Oura Ring v2 Integration v2.8.7
 
 ## 🐛 BUG FIXES IN v2.8.7
 
@@ -78,6 +163,7 @@
 - **Fixed**: When Oura's token endpoint rejects a refresh token (HTTP 400), the integration was silently re-serving stale cached data forever instead of surfacing HA's "Reauthenticate" prompt ([#61](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/61), [#64](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/64)).
 
 **Root cause (two-layer bug)**:
+
 1. `asyncio.gather(..., return_exceptions=True)` in `api.py` swallowed `OAuth2TokenRequestReauthError` the same as any ordinary per-endpoint failure — logging it at DEBUG and substituting empty data — so it never reached `coordinator.py` at all.
 2. Even if it had reached the coordinator, the blanket `except Exception` handler there would have taken the `if self.data: return self.data` branch (silently treating the update as successful) rather than raising `ConfigEntryAuthFailed`.
 
@@ -207,6 +293,7 @@
 **Root cause**: Oura's `/sleep` API returns in-progress sleep records during active sleep tracking with `bedtime_end = null`. The integration was selecting the last record in the response array, which after midnight is the in-progress record for the current night rather than the completed sleep record.
 
 **Fix**:
+
 - Coordinator now filters for **completed** sleep records (both `bedtime_start` and `bedtime_end` present) before selecting the latest.
 - Prefers `long_sleep` type (main overnight sleep >3h) over naps when multiple completed records exist for the same day.
 - When no completed record is available (ring not yet synced after midnight), **preserves the last known bedtime values** rather than going Unknown.
