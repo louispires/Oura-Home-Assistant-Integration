@@ -1,4 +1,23 @@
-﻿# Oura Ring v2 Integration v2.10.0
+﻿# Oura Ring v2 Integration v2.10.1
+
+## 🐛 FIXES IN v2.10.1 ([#78](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/78))
+
+- **Fixed**: the daily statistics reconciliation imported heart rate rows for an hour that had not happened yet, which broke hourly long-term statistics for **every entity in Home Assistant** — not just Oura sensors. Users in timezones behind UTC saw a one-hour gap in every `statistics-graph` card each morning, alongside a daily `Blocked attempt to insert duplicated statistic rows` error from the recorder.
+
+  Root cause: heart rate readings were grouped by their **UTC** date and stamped at noon UTC. The reconcile runs on the first poll after **local** midnight, by which point the UTC date had already rolled over, so a partial day was imported at a timestamp still hours in the future. When the recorder later compiled that hour, its `INSERT` hit the `UNIQUE (metadata_id, start_ts)` constraint. Because the recorder writes every entity's hourly statistics in a single transaction, the rollback dropped that hour for all of them.
+
+- **Added**: a `STATISTICS_MIN_AGE` guard (2 hours) in `_create_statistic`. Data points whose hour ended less than two hours ago are skipped and logged at debug level. This applies to **every** imported statistic, not just heart rate, so no data source can pre-empt a row the recorder has not compiled yet. The extra hour of margin covers a recorder that is running behind.
+- **Changed**: heart rate readings are now grouped by the **Home Assistant local date**, matching the `day` field semantics already used by every other Oura data source.
+- **Self-healing**: a skipped day is imported by the next day's reconciliation once its hour is safely in the past, and that import overwrites any bad row left behind by an earlier version. No data is lost and no manual database cleanup is required.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 169 automated tests passing (up from 166): three new statistics tests covering the unfinished-hour guard, the just-ended-hour edge case, and local-date grouping of heart rate under `America/Los_Angeles`.
+- ✅ Full Docker test suite: all tests pass
+
+Thanks to [@h0verin](https://github.com/h0verin) for the detailed diagnosis and the fix.
+
+# Oura Ring v2 Integration v2.10.0
 
 > **Includes everything from v2.9.0**, which only ever shipped as release candidates. Upgrading from v2.8.7 gets you the Latest Bedtime sensors ([#74](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/74)) and statistics reconciliation ([#73](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/73)) as well — see the v2.9.0 section below.
 
