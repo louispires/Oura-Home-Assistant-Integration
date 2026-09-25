@@ -5,7 +5,7 @@ as Home Assistant long-term statistics, significantly reducing code duplication.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import logging
 from typing import Any, Callable
 
@@ -22,6 +22,7 @@ from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.util import dt as dt_util
 from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
@@ -32,6 +33,14 @@ from homeassistant.const import (
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+# Only import rows whose hour ended at least this long ago. The recorder
+# compiles each finished hour for every entity with a state_class in a single
+# transaction, using a plain INSERT. An imported row that already occupies that
+# (statistic_id, start) makes the insert fail, and the rollback drops that
+# hour's statistics for *every* entity in Home Assistant, not just this one.
+# The extra hour of margin covers a recorder that is running behind.
+STATISTICS_MIN_AGE = timedelta(hours=2)
 
 
 def _get_unit_class(unit: str | None) -> str | None:
@@ -474,7 +483,7 @@ async def _process_heartrate_statistics(
             # Extract date from timestamp
             timestamp_str = data_entry.get("timestamp", "")
             if timestamp_str:
-                day = timestamp_str.split("T")[0]
+                day = _local_day(timestamp_str)
                 if day not in daily_readings:
                     daily_readings[day] = []
                 daily_readings[day].append(bpm)
@@ -749,6 +758,18 @@ async def _create_statistic(
         _LOGGER.warning("No metadata found for sensor: %s", sensor_key)
         return
 
+    cutoff = dt_util.utcnow() - STATISTICS_MIN_AGE
+    completed_points = [p for p in data_points if p["timestamp"] <= cutoff]
+    if len(completed_points) < len(data_points):
+        _LOGGER.debug(
+            "Skipping %d %s statistics for hours that have not finished yet",
+            len(data_points) - len(completed_points),
+            sensor_key,
+        )
+    if not completed_points:
+        return
+    data_points = completed_points
+
     # Hybrid approach for statistic_id
     # 1. Try to find existing entity in registry
     # 2. Fallback to default naming convention if not found
@@ -903,6 +924,22 @@ def _compute_percentage(entry: dict[str, Any], numerator_key: str, denominator_k
         return None
 
     return round((numerator / denominator) * 100, 1)
+
+
+def _local_day(timestamp_str: str) -> str:
+    """Return the Home Assistant local date (YYYY-MM-DD) of an ISO timestamp.
+
+    Oura reports heart rate readings in UTC. Grouping them by the UTC date
+    would put evening readings on the next day and, shortly after local
+    midnight, produce a partial day stamped hours in the future. Falls back to
+    the date portion of the string if it cannot be parsed.
+    """
+    parsed = dt_util.parse_datetime(timestamp_str)
+    if parsed is None:
+        return timestamp_str.split("T")[0]
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return dt_util.as_local(parsed).date().isoformat()
 
 
 def _parse_date_to_timestamp(date_str: str | None) -> datetime | None:

@@ -1,5 +1,6 @@
 """Tests for Oura Ring statistics module."""
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,7 +14,9 @@ from custom_components.oura.statistics import (
     _apply_transformation,
     _compute_percentage,
     _get_nested_value,
+    _process_heartrate_statistics,
 )
+from homeassistant.util import dt as dt_util
 
 
 def test_statistics_metadata_completeness():
@@ -427,3 +430,72 @@ async def test_get_baseline_sum_zero_when_no_history(mock_hass):
     assert baseline == 0.0
 
 
+@pytest.mark.anyio
+async def test_create_statistic_skips_unfinished_hours(mock_hass, mock_config_entry):
+    """Rows for hours the recorder hasn't compiled yet must not be imported.
+
+    Pre-importing such a row makes the recorder's own hourly INSERT hit the
+    UNIQUE (metadata_id, start_ts) constraint, rolling back that hour for all
+    entities.
+    """
+    now = datetime(2024, 1, 15, 7, 3, 0, tzinfo=timezone.utc)
+    data_points = [
+        {"timestamp": datetime(2024, 1, 14, 12, 0, 0, tzinfo=timezone.utc), "value": 60},
+        # Noon UTC today is still hours in the future at 07:03 UTC
+        {"timestamp": datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc), "value": 112},
+    ]
+
+    with patch("custom_components.oura.statistics.er.async_get") as mock_er_get, \
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha, \
+         patch("custom_components.oura.statistics.dt_util.utcnow", return_value=now):
+        mock_er_get.return_value.async_get_entity_id.return_value = "sensor.oura_ring_average_heart_rate"
+
+        await _create_statistic(mock_hass, "average_heart_rate", data_points, mock_config_entry)
+
+    _, _, statistics = mock_import_ha.call_args.args
+    assert [point["start"] for point in statistics] == [data_points[0]["timestamp"]]
+
+
+@pytest.mark.anyio
+async def test_create_statistic_skips_hour_that_just_ended(mock_hass, mock_config_entry):
+    """An hour that has only just ended may not be compiled yet, so it is skipped too."""
+    now = datetime(2024, 1, 15, 13, 0, 10, tzinfo=timezone.utc)
+    data_points = [
+        {"timestamp": datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc), "value": 60},
+    ]
+
+    with patch("custom_components.oura.statistics.er.async_get"), \
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha, \
+         patch("custom_components.oura.statistics.dt_util.utcnow", return_value=now):
+        await _create_statistic(mock_hass, "average_heart_rate", data_points, mock_config_entry)
+
+    assert not mock_import_ha.called
+
+
+@pytest.mark.anyio
+async def test_heartrate_statistics_grouped_by_local_day(mock_hass, mock_config_entry):
+    """Heart rate readings (UTC timestamps) are grouped by HA's local date."""
+    heartrate_data = [
+        # 22:00 PST on Jan 14, although the UTC date is Jan 15
+        {"timestamp": "2024-01-15T06:00:00+00:00", "bpm": 50},
+        # 12:00 PST on Jan 15
+        {"timestamp": "2024-01-15T20:00:00+00:00", "bpm": 70},
+        {"timestamp": "2024-01-15T21:00:00+00:00", "bpm": 90},
+    ]
+
+    original_tz = dt_util.DEFAULT_TIME_ZONE
+    dt_util.set_default_time_zone(ZoneInfo("America/Los_Angeles"))
+    try:
+        with patch(
+            "custom_components.oura.statistics._create_statistic", new=AsyncMock()
+        ) as mock_create:
+            await _process_heartrate_statistics(mock_hass, heartrate_data, mock_config_entry)
+    finally:
+        dt_util.set_default_time_zone(original_tz)
+
+    points = next(
+        call.args[2] for call in mock_create.call_args_list
+        if call.args[1] == "average_heart_rate"
+    )
+    by_day = {point["timestamp"].date().isoformat(): point["value"] for point in points}
+    assert by_day == {"2024-01-14": 50, "2024-01-15": 80}
