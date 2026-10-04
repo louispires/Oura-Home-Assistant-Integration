@@ -10,6 +10,7 @@ from custom_components.oura.statistics import (
     DATA_SOURCE_CONFIG,
     _create_statistic,
     _get_baseline_sum,
+    async_import_statistics,
     _parse_date_to_timestamp,
     _apply_transformation,
     _compute_percentage,
@@ -415,6 +416,10 @@ async def test_get_baseline_sum_returns_last_prior_sum(mock_hass):
         baseline = await _get_baseline_sum(mock_hass, "sensor.oura_ring_steps", before)
 
     assert baseline == 900.0
+    # "month" would extend the query end to month-end and read rows inside the window (#80)
+    query_args = recorder.async_add_executor_job.call_args.args
+    assert query_args[3] == before
+    assert query_args[5] == "hour"
 
 
 @pytest.mark.anyio
@@ -499,3 +504,78 @@ async def test_heartrate_statistics_grouped_by_local_day(mock_hass, mock_config_
     )
     by_day = {point["timestamp"].date().isoformat(): point["value"] for point in points}
     assert by_day == {"2024-01-14": 50, "2024-01-15": 80}
+
+
+@pytest.mark.anyio
+async def test_import_statistics_flushes_recorder_before_baseline_reads(
+    mock_hass, mock_config_entry, mock_oura_api_data
+):
+    """Queued imports must be committed before any baseline sum is read (#80)."""
+    calls: list[str] = []
+    recorder = MagicMock()
+    recorder.async_block_till_done = AsyncMock(side_effect=lambda: calls.append("flush"))
+
+    async def _record_create(*_args, **_kwargs):
+        calls.append("create")
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=recorder), \
+         patch("custom_components.oura.statistics._create_statistic", side_effect=_record_create):
+        await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+
+    assert calls[0] == "flush"
+    assert calls.count("flush") == 1
+    assert "create" in calls
+
+
+@pytest.mark.anyio
+async def test_import_statistics_continues_when_recorder_flush_fails(
+    mock_hass, mock_config_entry, mock_oura_api_data
+):
+    """A recorder that can't be flushed must not abort the import."""
+    recorder = MagicMock()
+    recorder.async_block_till_done = AsyncMock(side_effect=RuntimeError("not ready"))
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=recorder), \
+         patch("custom_components.oura.statistics._create_statistic", new=AsyncMock()) as mock_create:
+        await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+
+    assert mock_create.called
+
+
+@pytest.mark.anyio
+async def test_create_statistic_warns_when_sensor_entity_missing(
+    mock_hass, mock_config_entry, caplog
+):
+    """An entity-backed sensor missing from the registry is logged, not silently orphaned (#81)."""
+    data_points = [
+        {"timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc), "value": 80},
+    ]
+
+    with patch("custom_components.oura.statistics.er.async_get") as mock_er_get, \
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha:
+        mock_er_get.return_value.async_get_entity_id.return_value = None
+        await _create_statistic(mock_hass, "deep_sleep_score", data_points, mock_config_entry)
+
+    _, metadata, _ = mock_import_ha.call_args.args
+    assert metadata["statistic_id"] == "sensor.oura_ring_deep_sleep_score"
+    assert "deep_sleep_score is not registered" in caplog.text
+
+
+@pytest.mark.anyio
+async def test_create_statistic_statistics_only_key_uses_fallback_silently(
+    mock_hass, mock_config_entry, caplog
+):
+    """Statistics-only keys have no entity and use the fallback ID without a warning."""
+    data_points = [
+        {"timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc), "value": 2},
+    ]
+
+    with patch("custom_components.oura.statistics.er.async_get") as mock_er_get, \
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha, \
+         patch("custom_components.oura.statistics._get_baseline_sum", new=AsyncMock(return_value=0.0)):
+        mock_er_get.return_value.async_get_entity_id.return_value = None
+        await _create_statistic(mock_hass, "daily_workouts", data_points, mock_config_entry)
+
+    _, metadata, _ = mock_import_ha.call_args.args
+    assert metadata["statistic_id"] == "sensor.oura_ring_daily_workouts"
+    assert "not registered" not in caplog.text

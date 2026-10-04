@@ -1,6 +1,6 @@
 services:
   test:
-    image: homeassistant/home-assistant:2026.6
+    image: homeassistant/home-assistant:2026.9
     container_name: oura-test
     volumes:
       - ./custom_components:/config/custom_components

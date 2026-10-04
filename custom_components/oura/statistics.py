@@ -30,7 +30,7 @@ from homeassistant.const import (
     UnitOfLength,
 )
 
-from .const import DOMAIN
+from .const import DOMAIN, SENSOR_TYPES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -302,6 +302,12 @@ async def async_import_statistics(
         entry: Config entry for unique ID generation
     """
     _LOGGER.info("Starting statistics import from historical data")
+
+    # Baseline sums are read via the DB executor; commit earlier queued imports first (#80).
+    try:
+        await get_instance(hass).async_block_till_done()
+    except Exception as err:  # recorder not ready
+        _LOGGER.debug("Could not flush recorder queue before import: %s", err)
 
     total_stats = 0
 
@@ -728,7 +734,8 @@ async def _get_baseline_sum(
             datetime(1970, 1, 1, tzinfo=timezone.utc),
             before,
             {statistic_id},
-            "month",
+            # "month" would stretch the end to month-end, reading rows inside the window (#80).
+            "hour",
             None,
             {"sum"},
         )
@@ -780,9 +787,14 @@ async def _create_statistic(
     if entity_id:
         statistic_id = entity_id
     else:
-        # Fallback for fresh installs where entities don't exist yet
-        # Matches the default entity ID format: sensor.oura_ring_{sensor_key}
+        # Statistics-only keys (no entity) use this fallback by design.
         statistic_id = f"sensor.oura_ring_{sensor_key}"
+        if sensor_key in SENSOR_TYPES:
+            _LOGGER.warning(
+                "Entity for %s is not registered; importing statistics under %s",
+                sensor_key,
+                statistic_id,
+            )
 
     # Determine source and import method
     # If statistic_id has a colon, it's an external statistic (domain:name)

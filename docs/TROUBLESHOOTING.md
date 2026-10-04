@@ -21,6 +21,39 @@ or a bare "OAuth token rejected" abort), check the following:
 
 If none of the above resolves it, open an issue with the debug log (redact your client_id).
 
+## Long-Term Statistics Look Wrong (v2.10.1 and earlier)
+
+### Some sensors' history starts on the install day ([#81](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/81))
+
+On a fresh install with v2.10.1 or earlier, the historical import ran before the sensors were
+registered. Sensors whose entity ID differs from their internal key (e.g. the `*_contribution`
+sensors, `Average Breathing Rate`, `Minimum/Maximum Heart Rate`, the MET-minutes sensors) had
+their history stored under unused `sensor.oura_ring_<key>` statistic IDs. Fixed in v2.10.2.
+
+To repair an existing install:
+
+1. **Settings → Devices & Services → Oura Ring → Configure**, turn **Historical data already
+   imported** off and save. The entry reloads and re-imports the history into the correct entities.
+2. **Developer tools → Statistics**: delete the leftover `sensor.oura_ring_<key>` entries that
+   are reported as no longer provided by an entity.
+
+### Huge negative/positive bar a few days back on sum statistics ([#80](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/80))
+
+Steps, calories, sleep durations and other sum statistics could show one huge bar at the start
+of the daily reconcile window, because the cumulative sum before the window was read from the
+wrong row. Fixed in v2.10.2.
+
+To repair stored sums, after upgrading call the `oura.reconcile_statistics` action once with
+`days` covering your imported history (e.g. `90` for the default 3 months, max `1440`):
+
+```yaml
+action: oura.reconcile_statistics
+data:
+  days: 90
+```
+
+The re-import rewrites every cumulative sum in that range; nothing needs to be deleted.
+
 ## Removing the Integration & Your Data
 
 If you want to fully remove the integration and all locally stored Oura data from Home Assistant:
