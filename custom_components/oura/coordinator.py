@@ -142,15 +142,18 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.error("Failed to import statistics: %s", stats_err)
                 raise
 
-            # Process and store the LATEST day's data for current sensor states
-            processed_data = self._process_data(historical_data)
-
-            # Update the coordinator's data with current information
-            self.data = processed_data
             self.historical_data_loaded = True
         except Exception as err:
             _LOGGER.error("Failed to fetch historical data: %s", err)
             raise
+
+    def mark_reconciled_today(self) -> None:
+        """Skip today's automatic reconcile (e.g. a full import covers it)."""
+        self._last_reconcile_day = dt_util.now().date()
+
+    def reset_reconcile_marker(self) -> None:
+        """Let the next poll run the automatic reconcile."""
+        self._last_reconcile_day = None
 
     async def async_reconcile_statistics(self, days: int) -> None:
         """Re-import a recent window of data into long-term statistics on demand.

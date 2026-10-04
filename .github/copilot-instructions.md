@@ -32,7 +32,7 @@ docker compose -f docker-compose.test.yml run --rm test
 docker compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor.py -v
 ```
 
-Test image: `homeassistant/home-assistant:2025.11`. Tests use `pytest` + `pytest-asyncio` (async throughout).
+Test image: `homeassistant/home-assistant:2026.9`. Tests use `pytest` + `pytest-asyncio` (async throughout).
 
 ## Conventions
 

@@ -1,4 +1,32 @@
-﻿# Oura Ring v2 Integration v2.10.1
+﻿# Oura Ring v2 Integration v2.10.2
+
+## 🐛 FIXES IN v2.10.2
+
+### Sum statistics break at the start of the reconcile window ([#80](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/80))
+
+- **Fixed**: the daily reconcile seeded each sum statistic (steps, calories, sleep durations, …) from the wrong prior value, producing one huge bar a few days back in `statistics-graph` cards using `change`. The baseline lookup queried **monthly** statistics, and Home Assistant extends a monthly query to the end of the month, so the "previous" sum came from a row inside the window being re-imported. The lookup now uses hourly statistics and reads the last row strictly before the window.
+- **Fixed**: on a fresh install the first poll ran a reconcile straight after the historical import, before the recorder had written it, so the window started from zero. The first poll after a historical import no longer reconciles (the import already covers that window), and every statistics import now waits for previously queued recorder writes before reading baseline sums.
+
+### Fresh install: imported history stored under the wrong statistic IDs ([#81](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/81))
+
+- **Fixed**: the historical import ran before the sensor platforms were set up, so no entities were registered yet and statistics fell back to `sensor.oura_ring_<key>`. For 27 sensors whose entity ID comes from a different name (e.g. `deep_sleep_score` → `sensor.oura_ring_deep_sleep_contribution`), the imported history went to a statistic ID no entity uses. The import now runs after the platforms are set up, so every sensor's history lands on its real entity.
+- **Added**: a warning in the log if an entity-backed sensor is ever imported before its entity is registered, instead of silently orphaning its history.
+
+### Repairing existing data
+
+See [Troubleshooting → Long-Term Statistics Look Wrong](docs/TROUBLESHOOTING.md#long-term-statistics-look-wrong-v2101-and-earlier):
+
+- **#80**: call `oura.reconcile_statistics` once with `days` covering your imported history (e.g. `90`).
+- **#81** (fresh installs on v2.10.1 or earlier): turn **Historical data already imported** off in the integration options to re-import, then delete the orphaned `sensor.oura_ring_<key>` statistics in Developer tools → Statistics.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 178 automated tests passing (up from 169): setup ordering (import after platform setup, flag saved before the options listener), reconcile skip/reset around the first refresh, hourly baseline query, recorder flush before baseline reads, and the unregistered-entity warning.
+- ✅ Test image bumped to `homeassistant/home-assistant:2026.9` (2026.9.4); full Docker test suite passes.
+
+Thanks to [@pavelnikanovich](https://github.com/pavelnikanovich) for both detailed reports and root-cause analysis.
+
+# Oura Ring v2 Integration v2.10.1
 
 ## 🐛 FIXES IN v2.10.1 ([#78](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/78))
 
