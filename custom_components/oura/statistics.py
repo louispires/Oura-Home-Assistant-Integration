@@ -20,7 +20,8 @@ from homeassistant.components.recorder.statistics import (
 )
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CoreState, HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from homeassistant.const import (
@@ -41,6 +42,9 @@ _LOGGER = logging.getLogger(__name__)
 # hour's statistics for *every* entity in Home Assistant, not just this one.
 # The extra hour of margin covers a recorder that is running behind.
 STATISTICS_MIN_AGE = timedelta(hours=2)
+
+# hass.data key: entry IDs whose last import may still be in the recorder queue.
+DATA_QUEUED_IMPORTS = f"{DOMAIN}_queued_statistics_imports"
 
 
 def _get_unit_class(unit: str | None) -> str | None:
@@ -304,10 +308,23 @@ async def async_import_statistics(
     _LOGGER.info("Starting statistics import from historical data")
 
     # Baseline sums are read via the DB executor; commit earlier queued imports first (#80).
-    try:
-        await get_instance(hass).async_block_till_done()
-    except Exception as err:  # recorder not ready
-        _LOGGER.debug("Could not flush recorder queue before import: %s", err)
+    # Only once Home Assistant is running: the recorder does not process its queue before
+    # startup has finished, and entry setup (which reconciles on the first refresh) is part
+    # of startup, so waiting here would block it until the setup is cancelled.
+    queued_imports: set[str] = hass.data.setdefault(DATA_QUEUED_IMPORTS, set())
+    if hass.state is CoreState.running:
+        try:
+            await get_instance(hass).async_block_till_done()
+            queued_imports.discard(entry.entry_id)
+        except Exception as err:  # recorder not ready
+            _LOGGER.debug("Could not flush recorder queue before import: %s", err)
+    elif entry.entry_id in queued_imports:
+        # An earlier import may still be queued and there is no way to wait for it now.
+        raise HomeAssistantError(
+            "An earlier statistics import has not been written yet; "
+            "try again once Home Assistant is running"
+        )
+    queued_imports.add(entry.entry_id)
 
     total_stats = 0
 

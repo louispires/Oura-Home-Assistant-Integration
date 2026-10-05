@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_CLIENT_ID, CONF_CLIENT_SECRET
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CoreState, HomeAssistant
 
 from custom_components.oura.const import DOMAIN
 
@@ -276,6 +276,7 @@ def mock_hass() -> HomeAssistant:
     """Mock HomeAssistant instance for testing."""
     hass = MagicMock(spec=HomeAssistant)
     hass.data = {}
+    hass.state = CoreState.running
     hass.config_entries = MagicMock()
     hass.config_entries.async_forward_entry_setups = AsyncMock()
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
