@@ -1,4 +1,23 @@
-﻿# Oura Ring v2 Integration v2.10.2
+﻿# Oura Ring v2 Integration v2.10.3
+
+## 🐛 FIXES IN v2.10.3
+
+### Integration setup times out on Home Assistant restart ([#83](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/83), [#84](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/84))
+
+- **Fixed**: since v2.10.2 the integration failed to load on a full Home Assistant restart. Startup waited about five minutes, then the setup was cancelled with `Global task timeout: Bootstrap stage 2 timeout`. Reloading the integration afterwards worked.
+
+  Root cause: the v2.10.2 fix for [#80](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/80) waits for the recorder to write earlier queued imports before reading baseline sums. The recorder does not process its queue until Home Assistant has finished starting, while Home Assistant waits for the integration's setup (which reconciles statistics on the first refresh) to finish. Neither side could move.
+
+- **Changed**: the recorder wait now only runs once Home Assistant is running. During startup the first statistics import of an entry goes ahead without it; nothing from that entry is queued yet. A second import of the same entry during startup is refused (it would read baseline sums the first has not written, i.e. #80 again) and retried on the next poll, by which point the wait works normally. Multiple Oura accounts do not block each other.
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 191 automated tests passing (up from 178): no recorder wait in any non-running core state, refusal of a second import during startup, startup → running hand-off, per-entry isolation.
+- ✅ Verified against a real Home Assistant core and SQLite recorder in the `homeassistant/home-assistant:2026.9` image, and on a live HA 2026.9.4 instance (restart ~105 s with the entry loaded, reloads and manual reconciles while running, sums unchanged).
+
+Thanks to [@devachnid](https://github.com/devachnid) and [@h0verin](https://github.com/h0verin) for reporting, and to [@pavelnikanovich](https://github.com/pavelnikanovich) for the fix.
+
+# Oura Ring v2 Integration v2.10.2
 
 ## 🐛 FIXES IN v2.10.2
 
