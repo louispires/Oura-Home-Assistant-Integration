@@ -17,6 +17,8 @@ from custom_components.oura.statistics import (
     _get_nested_value,
     _process_heartrate_statistics,
 )
+from homeassistant.core import CoreState
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
 
@@ -511,6 +513,7 @@ async def test_import_statistics_flushes_recorder_before_baseline_reads(
     mock_hass, mock_config_entry, mock_oura_api_data
 ):
     """Queued imports must be committed before any baseline sum is read (#80)."""
+    mock_hass.state = CoreState.running
     calls: list[str] = []
     recorder = MagicMock()
     recorder.async_block_till_done = AsyncMock(side_effect=lambda: calls.append("flush"))
@@ -532,12 +535,119 @@ async def test_import_statistics_continues_when_recorder_flush_fails(
     mock_hass, mock_config_entry, mock_oura_api_data
 ):
     """A recorder that can't be flushed must not abort the import."""
+    mock_hass.state = CoreState.running
     recorder = MagicMock()
     recorder.async_block_till_done = AsyncMock(side_effect=RuntimeError("not ready"))
 
     with patch("custom_components.oura.statistics.get_instance", return_value=recorder), \
          patch("custom_components.oura.statistics._create_statistic", new=AsyncMock()) as mock_create:
         await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+
+    assert mock_create.called
+
+
+NOT_RUNNING_STATES = [
+    CoreState.not_running,
+    CoreState.starting,
+    CoreState.stopping,
+    CoreState.final_write,
+    CoreState.stopped,
+]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("state", NOT_RUNNING_STATES)
+async def test_import_statistics_does_not_wait_for_recorder_unless_running(
+    mock_hass, mock_config_entry, mock_oura_api_data, state
+):
+    """Outside the running state the recorder may never answer the wait.
+
+    Until Home Assistant has started it commits nothing, and entry setup (which
+    reconciles on the first refresh) is part of startup: waiting there blocks
+    startup until the setup is cancelled. After the final write it stops reading
+    its queue.
+    """
+    mock_hass.state = state
+    recorder = MagicMock()
+    recorder.async_block_till_done = AsyncMock()
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=recorder), \
+         patch("custom_components.oura.statistics._create_statistic", new=AsyncMock()) as mock_create:
+        await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+
+    recorder.async_block_till_done.assert_not_called()
+    assert mock_create.called
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("state", NOT_RUNNING_STATES)
+async def test_import_statistics_refuses_second_import_it_cannot_wait_for(
+    mock_hass, mock_config_entry, mock_oura_api_data, state
+):
+    """Without the wait a second import would read baselines the first has not written (#80)."""
+    mock_hass.state = state
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=MagicMock()), \
+         patch("custom_components.oura.statistics._create_statistic", new=AsyncMock()) as mock_create:
+        await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+        mock_create.reset_mock()
+        with pytest.raises(HomeAssistantError):
+            await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+
+    mock_create.assert_not_called()
+
+
+@pytest.mark.anyio
+async def test_import_statistics_after_startup_import_waits_and_proceeds(
+    mock_hass, mock_config_entry, mock_oura_api_data
+):
+    """Once Home Assistant runs, the wait commits the startup import and the next one goes ahead."""
+    recorder = MagicMock()
+    recorder.async_block_till_done = AsyncMock()
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=recorder), \
+         patch("custom_components.oura.statistics._create_statistic", new=AsyncMock()) as mock_create:
+        mock_hass.state = CoreState.starting
+        await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+        mock_create.reset_mock()
+        mock_hass.state = CoreState.running
+        await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+
+    recorder.async_block_till_done.assert_awaited_once()
+    assert mock_create.called
+
+
+@pytest.mark.anyio
+async def test_import_statistics_while_stopping_refused_after_running_import(
+    mock_hass, mock_config_entry, mock_oura_api_data
+):
+    """An import made while running may still be queued when Home Assistant starts to stop."""
+    recorder = MagicMock()
+    recorder.async_block_till_done = AsyncMock()
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=recorder), \
+         patch("custom_components.oura.statistics._create_statistic", new=AsyncMock()):
+        mock_hass.state = CoreState.running
+        await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+        mock_hass.state = CoreState.stopping
+        with pytest.raises(HomeAssistantError):
+            await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+
+
+@pytest.mark.anyio
+async def test_import_statistics_startup_imports_of_two_entries_do_not_block_each_other(
+    mock_hass, mock_config_entry, mock_oura_api_data
+):
+    """Each entry has its own statistics; one entry's queued import is not a reason to refuse another."""
+    other_entry = MagicMock()
+    other_entry.entry_id = "another_entry_id"
+    mock_hass.state = CoreState.not_running
+
+    with patch("custom_components.oura.statistics.get_instance", return_value=MagicMock()), \
+         patch("custom_components.oura.statistics._create_statistic", new=AsyncMock()) as mock_create:
+        await async_import_statistics(mock_hass, mock_oura_api_data, mock_config_entry)
+        mock_create.reset_mock()
+        await async_import_statistics(mock_hass, mock_oura_api_data, other_entry)
 
     assert mock_create.called
 
