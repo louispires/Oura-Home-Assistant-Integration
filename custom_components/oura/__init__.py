@@ -21,6 +21,7 @@ from .const import (
     DEFAULT_STATISTICS_RECONCILE_DAYS,
 )
 from .coordinator import OuraDataUpdateCoordinator
+from .lifetime import async_remove_store as async_remove_lifetime_store
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,6 +85,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Persistent flag in config entry options; prevents re-importing on every restart
     historical_data_imported = entry.options.get(CONF_HISTORICAL_DATA_IMPORTED, False)
+    historical_days = (
+        entry.options.get(CONF_HISTORICAL_MONTHS, DEFAULT_HISTORICAL_MONTHS) * 30
+    )
+
+    await coordinator.lifetime.async_load()
 
     if not historical_data_imported:
         # The full historical import below covers today's reconcile window.
@@ -98,11 +104,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Import only after platforms are set up so statistics use the registered entity IDs (#81).
     if not historical_data_imported:
-        historical_months = entry.options.get(CONF_HISTORICAL_MONTHS, DEFAULT_HISTORICAL_MONTHS)
-        # Approximate: 30 days per month
-        historical_days = historical_months * 30
-
-        _LOGGER.info("Loading %d months (%d days) of historical data...", historical_months, historical_days)
+        _LOGGER.info("Loading %d days of historical data...", historical_days)
 
         try:
             await coordinator.async_load_historical_data(historical_days)
@@ -116,6 +118,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             coordinator.reset_reconcile_marker()
     else:
         _LOGGER.debug("Historical data already imported - skipping")
+        if not coordinator.lifetime.initialized:
+            # Installs from before the lifetime counters; in the background, not to hold up startup.
+            entry.async_create_background_task(
+                hass,
+                coordinator.async_initialize_lifetime(historical_days),
+                "oura_lifetime_counters_init",
+            )
 
     # Must come after the import flag is saved, otherwise saving it triggers a reload.
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -139,3 +148,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.services.async_remove(DOMAIN, SERVICE_RECONCILE_STATISTICS)
 
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Delete the lifetime counter state of a removed entry."""
+    await async_remove_lifetime_store(hass, entry.entry_id)

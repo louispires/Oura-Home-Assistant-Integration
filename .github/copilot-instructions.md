@@ -11,7 +11,8 @@ custom_components/oura/
 ├── coordinator.py       # OuraDataUpdateCoordinator: modular _process_* methods per data category
 ├── sensor.py            # OuraSensor: CoordinatorEntity, config-driven from SENSOR_TYPES
 ├── binary_sensor.py     # Rest mode + ring charging binary sensors
-├── statistics.py        # Historical import + daily reconcile as HA long-term statistics
+├── statistics.py        # Historical import + daily reconcile as HA long-term statistics (means + statistics-only sums)
+├── lifetime.py          # Lifetime counters: history of entity sums, recorder-owned statistics, late-data moves (#86)
 ├── config_flow.py       # OAuth2 flow + options flow (update interval, historical months, reconcile days, re-import toggle)
 ├── const.py             # All sensor definitions, API URLs, scopes, defaults
 ├── application_credentials.py  # OAuth2 credential provider (moi.ouraring.com primary, legacy fallback)
@@ -21,7 +22,7 @@ custom_components/oura/
 
 **Data flow**: `api.py` fetches all endpoints → `coordinator.py` processes raw data via `_process_*` methods → entities read from `coordinator.data[key]`.
 
-**Key pattern**: Sensors are **configuration-driven** — defined in `SENSOR_TYPES` dict in `const.py` (name, icon, unit, device_class, state_class, entity_category, data_category). Adding a sensor means adding an entry there + coordinator processing + `strings.json`/`translations/*.json` names + `statistics.py` metadata/mapping (unless intentionally excluded).
+**Key pattern**: Sensors are **configuration-driven** — defined in `SENSOR_TYPES` dict in `const.py` (name, icon, unit, device_class, state_class, entity_category, data_category). Adding a sensor means adding an entry there + coordinator processing + `strings.json`/`translations/*.json` names + `statistics.py` metadata/mapping (unless intentionally excluded). A daily sum with an entity is never imported into its own statistic (the recorder owns it, #86); add it to `LIFETIME_SOURCE_KEYS` in `const.py` so it gets a lifetime counter.
 
 ## Build and Test
 

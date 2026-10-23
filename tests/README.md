@@ -4,7 +4,7 @@ This directory contains the automated test suite and live diagnostic scripts for
 
 ## Test Structure
 
-### Automated Tests (192 tests)
+### Automated Tests (230 tests)
 
 - **`test_api.py`** (9 tests)
   - Timezone-aware date window and exclusive end-date construction

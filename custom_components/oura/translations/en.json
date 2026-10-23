@@ -146,7 +146,26 @@
       "resting_time": {"name": "Resting time"},
       "sedentary_time": {"name": "Sedentary time"},
       "equivalent_walking_distance": {"name": "Equivalent walking distance"},
-      "target_meters": {"name": "Target distance"}
+      "target_meters": {"name": "Target distance"},
+      "lifetime_total_sleep_duration": {"name": "Lifetime total sleep duration"},
+      "lifetime_deep_sleep_duration": {"name": "Lifetime deep sleep duration"},
+      "lifetime_rem_sleep_duration": {"name": "Lifetime REM sleep duration"},
+      "lifetime_light_sleep_duration": {"name": "Lifetime light sleep duration"},
+      "lifetime_awake_time": {"name": "Lifetime awake time"},
+      "lifetime_time_in_bed": {"name": "Lifetime time in bed"},
+      "lifetime_steps": {"name": "Lifetime steps"},
+      "lifetime_active_calories": {"name": "Lifetime active calories"},
+      "lifetime_total_calories": {"name": "Lifetime total calories"},
+      "lifetime_met_min_high": {"name": "Lifetime high activity MET minutes"},
+      "lifetime_met_min_medium": {"name": "Lifetime medium activity MET minutes"},
+      "lifetime_met_min_low": {"name": "Lifetime low activity MET minutes"},
+      "lifetime_inactivity_alerts": {"name": "Lifetime inactivity alerts"},
+      "lifetime_non_wear_time": {"name": "Lifetime ring non-wear time"},
+      "lifetime_resting_time": {"name": "Lifetime resting time"},
+      "lifetime_sedentary_time": {"name": "Lifetime sedentary time"},
+      "lifetime_equivalent_walking_distance": {"name": "Lifetime equivalent walking distance"},
+      "lifetime_stress_high_duration": {"name": "Lifetime stress high duration"},
+      "lifetime_recovery_high_duration": {"name": "Lifetime recovery high duration"}
     }
   },
   "services": {

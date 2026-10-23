@@ -11,7 +11,7 @@ Works with **Gen 3**, **Ring 4**, and **Ring 5**. **Requires Home Assistant 2026
 
 ## Features
 
-- **98 sensors + 2 binary sensors**: sleep, readiness, activity, heart rate and HRV, stress and resilience, SpO2, VO2 Max, cardiovascular age, workouts, mindfulness sessions, tags, rest mode, and ring battery. See the [Sensor Reference](docs/SENSORS.md).
+- **117 sensors + 2 binary sensors**: sleep, readiness, activity, heart rate and HRV, stress and resilience, SpO2, VO2 Max, cardiovascular age, workouts, mindfulness sessions, tags, rest mode, ring battery, and lifetime totals. See the [Sensor Reference](docs/SENSORS.md).
 - **History on first setup**: imports 1-48 months (default 3) of past data as long-term statistics with the correct dates.
 - **Late-data backfill**: once a day re-imports the last 7 days (configurable) so data Oura syncs late lands on the right date.
 - **Latest sleep tracking**: Latest Bedtime Start/End follow the most recent session, naps included, for sleep-based automations.
@@ -62,6 +62,7 @@ Detailed instructions and fixes for common OAuth errors: [Installation Guide](do
 | Workouts | 7 | Workouts today and details of the latest workout |
 | Sessions and Tags | 4 | Mindfulness sessions, meditation time, today's tags |
 | Rest Mode and Ring | 3 | Rest mode window, ring battery level |
+| Lifetime Counters | 19 | Never-resetting totals of steps, calories, sleep durations, and the other daily sums; they hold the history of those sums |
 | Binary sensors | 2 | Rest mode, ring charging |
 
 Every sensor with its entity ID, unit, and notes: **[Sensor Reference](docs/SENSORS.md)**.
@@ -82,6 +83,8 @@ Change options under **Settings → Devices & Services → Oura Ring → Configu
 ## Long-Term Statistics
 
 On first setup the integration imports your Oura history into Home Assistant's long-term statistics, each value stamped with its original Oura date. History graphs, statistics graphs, and ApexCharts show past data immediately, and regular polling only fetches the last day or so.
+
+The history of the daily sums (steps, calories, sleep durations, …) lives in the **Lifetime** counters: a `statistics-graph` card with `stat_types: change` on `sensor.oura_ring_lifetime_steps` shows steps per day, week, or month ([example](docs/DASHBOARDS.md#daily-history-from-lifetime-counters)). Home Assistant's recorder is the only writer of each sum statistic, so they never show negative steps or calories.
 
 Oura sometimes delivers data late (ring not synced, Home Assistant offline). The daily reconcile re-imports the configured window so those values land on the correct date; re-running it is safe. To backfill a longer gap, run the action manually:
 

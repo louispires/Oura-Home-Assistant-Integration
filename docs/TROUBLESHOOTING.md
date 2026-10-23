@@ -5,6 +5,7 @@
 - [Sensors Missing or Unavailable](#sensors-missing-or-unavailable)
 - [API Rate Limiting](#api-rate-limiting)
 - [Long-Term Statistics Look Wrong (v2.10.1 and earlier)](#long-term-statistics-look-wrong-v2101-and-earlier)
+- [Negative Changes on Sum Statistics](#negative-changes-on-sum-statistics)
 - [Removing the Integration & Your Data](#removing-the-integration--your-data)
 - [Integration Not Appearing](#integration-not-appearing)
 
@@ -91,6 +92,40 @@ data:
 ```
 
 The re-import rewrites every cumulative sum in that range; nothing needs to be deleted.
+From v2.12.0 the re-import no longer writes the sums of sensors with an entity; see below.
+
+## Negative Changes on Sum Statistics
+
+([#86](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/86))
+
+Up to v2.11.0 two writers kept two different running sums in the statistic of each daily sum
+sensor (steps, calories, sleep durations, …): Home Assistant's recorder, hourly from the
+sensor's state, and the integration's daily import at 12:00 UTC. `statistics-graph` cards using
+`change` showed jumps up and back down, negative days, and sums that restarted. On top of
+that, the daily sensors had no `last_reset`, so the drop back to a small value on a new day
+counted as a decrease.
+
+Fixed in v2.12.0:
+
+- The recorder is the only writer of every sum statistic. The integration no longer imports
+  sums into the daily sensors' statistics.
+- The history of the daily sums lives in the new **Lifetime** counters
+  ([Sensor Reference](SENSORS.md#lifetime-counters-19)). Their statistic gets the imported
+  history once; after that the recorder writes it, and data Oura syncs late is moved onto the
+  day it belongs to. Use them for daily/weekly/monthly totals
+  ([example](DASHBOARDS.md#daily-history-from-lifetime-counters)).
+- The daily `total` sensors report the start of their Oura day as `last_reset`, so a new day
+  starts a new cycle. `Equivalent Walking Distance` is now a `total` sensor too.
+
+What stays: rows written before the upgrade are not rewritten, so the daily sensors' old
+statistics keep their jumps. On the first update after upgrading, each daily `total` sensor
+starts its first cycle, and today's value so far is counted once more. For clean history use
+the Lifetime counters, or delete a daily sensor's statistics under **Developer tools →
+Statistics** to let the recorder start fresh.
+
+Installs from before v2.12.0 load the Lifetime counters' history in the background after the
+first restart (the configured number of historical months); the counters are unavailable until
+then.
 
 ## Removing the Integration & Your Data
 

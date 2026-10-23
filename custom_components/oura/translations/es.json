@@ -144,7 +144,26 @@
       "resting_time": {"name": "Tiempo de descanso"},
       "sedentary_time": {"name": "Tiempo sedentario"},
       "equivalent_walking_distance": {"name": "Distancia equivalente caminada"},
-      "target_meters": {"name": "Distancia objetivo"}
+      "target_meters": {"name": "Distancia objetivo"},
+      "lifetime_total_sleep_duration": {"name": "Duración total del sueño (acumulado)"},
+      "lifetime_deep_sleep_duration": {"name": "Duración del sueño profundo (acumulado)"},
+      "lifetime_rem_sleep_duration": {"name": "Duración del sueño REM (acumulado)"},
+      "lifetime_light_sleep_duration": {"name": "Duración del sueño ligero (acumulado)"},
+      "lifetime_awake_time": {"name": "Tiempo despierto (acumulado)"},
+      "lifetime_time_in_bed": {"name": "Tiempo en cama (acumulado)"},
+      "lifetime_steps": {"name": "Pasos (acumulado)"},
+      "lifetime_active_calories": {"name": "Calorías activas (acumulado)"},
+      "lifetime_total_calories": {"name": "Calorías totales (acumulado)"},
+      "lifetime_met_min_high": {"name": "MET-minutos de actividad alta (acumulado)"},
+      "lifetime_met_min_medium": {"name": "MET-minutos de actividad media (acumulado)"},
+      "lifetime_met_min_low": {"name": "MET-minutos de actividad baja (acumulado)"},
+      "lifetime_inactivity_alerts": {"name": "Alertas de inactividad (acumulado)"},
+      "lifetime_non_wear_time": {"name": "Tiempo sin llevar el anillo (acumulado)"},
+      "lifetime_resting_time": {"name": "Tiempo de descanso (acumulado)"},
+      "lifetime_sedentary_time": {"name": "Tiempo sedentario (acumulado)"},
+      "lifetime_equivalent_walking_distance": {"name": "Distancia equivalente caminada (acumulado)"},
+      "lifetime_stress_high_duration": {"name": "Duración de estrés alto (acumulado)"},
+      "lifetime_recovery_high_duration": {"name": "Duración de recuperación alta (acumulado)"}
     }
   },
   "services": {

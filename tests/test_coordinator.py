@@ -417,11 +417,13 @@ def test_empty_data_handling():
     processed = coordinator._process_data(data)
 
     # Should return dict with default values without errors
+    from homeassistant.util import dt as dt_util
     assert isinstance(processed, dict)
     assert processed == {
         "rest_mode_active": False,
         "workouts_today": 0,
         "_workouts_today_list": [],
+        "_day_workout": dt_util.now().date(),
     }
 
 
@@ -1151,3 +1153,39 @@ def test_process_heart_rate_fallback_to_last10_when_no_recent():
     # Falls back to last 10; current is most recent after sort
     assert processed["current_heart_rate"] == 55  # smallest offset = most recent
     assert processed["average_heart_rate"] == (55 + 65 + 75) / 3
+
+
+def test_day_keys_follow_record_used_for_daily_totals():
+    """Each daily-total category exposes the Oura day of the record its values came from."""
+    from datetime import date, datetime, timedelta, timezone
+    from homeassistant.util import dt as dt_util
+
+    coordinator = MockCoordinator()
+    today = datetime.now(timezone.utc).date()
+    yesterday = (today - timedelta(days=1)).isoformat()
+    data = {
+        "activity": {"data": [{"day": "2026-10-19", "steps": 1}, {"day": "2026-10-20", "steps": 2}]},
+        "stress": {"data": [{"day": "2026-10-20", "stress_high": 60}]},
+        "sleep_detail": {
+            "data": [
+                {
+                    "day": yesterday,
+                    "type": "long_sleep",
+                    "total_sleep_duration": 28800,
+                    "bedtime_start": "2026-10-19T23:00:00+00:00",
+                    "bedtime_end": "2026-10-20T07:00:00+00:00",
+                }
+            ]
+        },
+        "session": {"data": [{"day": today.isoformat(), "type": "meditation"}]},
+        "tag": {"data": [{"day": today.isoformat(), "tags": ["coffee"]}]},
+    }
+    processed = coordinator._process_data(data)
+
+    assert processed["_day_activity"] == date(2026, 10, 20)
+    assert processed["_day_stress"] == date(2026, 10, 20)
+    assert processed["_day_sleep_detail"] == date.fromisoformat(yesterday)
+    local_today = dt_util.now().date()
+    assert processed["_day_workout"] == local_today
+    assert processed["_day_session"] == local_today
+    assert processed["_day_tag"] == local_today

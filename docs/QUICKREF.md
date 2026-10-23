@@ -40,7 +40,7 @@ Do **not** register your local URL, DuckDNS URL, or Nabu Casa URL as Redirect UR
 
 ## Entity Summary
 
-- **Sensors**: 98
+- **Sensors**: 117
 - **Binary sensors**: 2
 - **Total entities**: 100
 
@@ -135,9 +135,9 @@ docker compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor
 
 ## Version Information
 
-- **Integration Version**: 2.11.0
+- **Integration Version**: 2.12.0
 - **Minimum Home Assistant**: 2026.3.0
-- **Test Suite Status**: 192 passing tests (latest full Docker run)
+- **Test Suite Status**: 230 passing tests (latest full Docker run)
 - **API Version**: Oura v2 (OpenAPI spec 1.41)
 
 ## Support

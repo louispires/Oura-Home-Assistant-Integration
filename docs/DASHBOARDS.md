@@ -7,7 +7,7 @@ Chart examples use [apexcharts-card](https://github.com/RomRider/apexcharts-card
 ## Contents
 
 - ApexCharts cards: [Scores Overview](#scores-overview) · [Sleep Analysis](#sleep-analysis) · [Sleep Efficiency Trend](#sleep-efficiency-trend) · [Heart Health](#heart-health) · [Daily Activity](#daily-activity) · [Workout Summary](#workout-summary) · [Mindfulness and Tags](#mindfulness-and-tags) · [Temperature Deviation](#temperature-deviation)
-- Built-in cards: [Rest Mode](#rest-mode) · [Summary Entities](#summary-entities) · [Score Gauges](#score-gauges)
+- Built-in cards: [Daily History from Lifetime Counters](#daily-history-from-lifetime-counters) · [Rest Mode](#rest-mode) · [Summary Entities](#summary-entities) · [Score Gauges](#score-gauges)
 - Automations: [Low Sleep Score Alert](#low-sleep-score-alert) · [Open Curtains After Latest Sleep](#open-curtains-after-latest-sleep)
 
 ## ApexCharts Cards
@@ -464,6 +464,24 @@ yaxis:
 ```
 
 ## Built-in Cards
+
+### Daily History from Lifetime Counters
+
+The `Lifetime …` sensors carry the full imported history of the daily sums. The `change` of a lifetime counter per day, week, or month is that period's total, late-synced data included.
+
+```yaml
+type: statistics-graph
+title: Steps per Day
+entities:
+  - sensor.oura_ring_lifetime_steps
+stat_types:
+  - change
+period: day
+days_to_show: 30
+chart_type: bar
+```
+
+Use `period: week` or `period: month` for longer views, and swap in `sensor.oura_ring_lifetime_active_calories`, `sensor.oura_ring_lifetime_total_sleep_duration`, etc.
 
 ### Rest Mode
 

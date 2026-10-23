@@ -146,7 +146,26 @@
       "resting_time": {"name": "Temps de repos"},
       "sedentary_time": {"name": "Temps sédentaire"},
       "equivalent_walking_distance": {"name": "Distance de marche équivalente"},
-      "target_meters": {"name": "Distance cible"}
+      "target_meters": {"name": "Distance cible"},
+      "lifetime_total_sleep_duration": {"name": "Durée totale de sommeil (cumul)"},
+      "lifetime_deep_sleep_duration": {"name": "Durée du sommeil profond (cumul)"},
+      "lifetime_rem_sleep_duration": {"name": "Durée du sommeil REM (cumul)"},
+      "lifetime_light_sleep_duration": {"name": "Durée du sommeil léger (cumul)"},
+      "lifetime_awake_time": {"name": "Temps éveillé (cumul)"},
+      "lifetime_time_in_bed": {"name": "Temps au lit (cumul)"},
+      "lifetime_steps": {"name": "Pas (cumul)"},
+      "lifetime_active_calories": {"name": "Calories actives (cumul)"},
+      "lifetime_total_calories": {"name": "Calories totales (cumul)"},
+      "lifetime_met_min_high": {"name": "MET-minutes d'activité élevée (cumul)"},
+      "lifetime_met_min_medium": {"name": "MET-minutes d'activité moyenne (cumul)"},
+      "lifetime_met_min_low": {"name": "MET-minutes d'activité faible (cumul)"},
+      "lifetime_inactivity_alerts": {"name": "Alertes d'inactivité (cumul)"},
+      "lifetime_non_wear_time": {"name": "Temps sans porter la bague (cumul)"},
+      "lifetime_resting_time": {"name": "Temps de repos (cumul)"},
+      "lifetime_sedentary_time": {"name": "Temps sédentaire (cumul)"},
+      "lifetime_equivalent_walking_distance": {"name": "Distance de marche équivalente (cumul)"},
+      "lifetime_stress_high_duration": {"name": "Durée de stress élevé (cumul)"},
+      "lifetime_recovery_high_duration": {"name": "Durée de récupération élevée (cumul)"}
     }
   },
   "services": {

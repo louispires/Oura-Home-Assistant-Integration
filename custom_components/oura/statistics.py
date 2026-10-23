@@ -5,7 +5,7 @@ as Home Assistant long-term statistics, significantly reducing code duplication.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import logging
 from typing import Any, Callable
 
@@ -31,7 +31,7 @@ from homeassistant.const import (
     UnitOfLength,
 )
 
-from .const import DOMAIN, SENSOR_TYPES
+from .const import DOMAIN, LIFETIME_SOURCE_KEYS, SENSOR_TYPES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -344,18 +344,6 @@ async def async_import_statistics(
             continue
 
         if source_key == "sleep_detail":
-            # Total Sleep Duration should reflect every valid session that day
-            # (naps included), unlike the other sleep_detail stats below which
-            # only represent the primary record (issue #73).
-            total_sleep_points = [
-                {"timestamp": timestamp, "value": _apply_transformation(seconds, "seconds_to_hours")}
-                for day, seconds in _sum_total_sleep_duration_by_day(source_data).items()
-                if (timestamp := _parse_date_to_timestamp(day))
-            ]
-            if total_sleep_points:
-                await _create_statistic(hass, "total_sleep_duration", total_sleep_points, entry)
-                total_stats += len(total_sleep_points)
-
             # A day can have multiple sessions (naps + overnight sleep); daily
             # statistics have one timestamp per day, so pick a single record
             # to represent it (mirrors the primary Bedtime Start/End long_sleep
@@ -368,6 +356,44 @@ async def async_import_statistics(
         _LOGGER.debug("Imported %d %s statistics", stats_count, source_key)
 
     _LOGGER.info("Successfully imported %d total statistics data points", total_stats)
+
+
+def daily_sum_values(data: dict[str, Any]) -> dict[str, dict[str, float]]:
+    """Return each lifetime source key's value per Oura day (YYYY-MM-DD)."""
+    values: dict[str, dict[str, float]] = {key: {} for key in LIFETIME_SOURCE_KEYS}
+    for source_key in ("sleep_detail", "activity", "stress"):
+        records = (data.get(source_key) or {}).get("data") or []
+        if source_key == "sleep_detail":
+            # Total sleep counts every session of the day, naps included (#73).
+            for day, seconds in _sum_total_sleep_duration_by_day(records).items():
+                if (day_iso := _iso_day(day)) is not None:
+                    values["total_sleep_duration"][day_iso] = seconds / 3600
+            records = _collapse_sleep_detail_by_day(records)
+
+        for record in records:
+            if (day_iso := _iso_day(record.get("day"))) is None:
+                continue
+            for mapping in DATA_SOURCE_CONFIG[source_key]["mappings"]:
+                key = mapping["sensor_key"]
+                if key not in values:
+                    continue
+                value = _get_nested_value(record, mapping["api_path"])
+                if value is None:
+                    continue
+                if transform := mapping.get("transform"):
+                    value = _apply_transformation(value, transform)
+                values[key][day_iso] = float(value)
+    return values
+
+
+def _iso_day(value: Any) -> str | None:
+    """Normalise an Oura day value to YYYY-MM-DD, or None if it isn't a date."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return date.fromisoformat(value[:10]).isoformat()
+    except ValueError:
+        return None
 
 
 def _collapse_sleep_detail_by_day(
@@ -780,6 +806,10 @@ async def _create_statistic(
     metadata = STATISTICS_METADATA.get(sensor_key)
     if not metadata:
         _LOGGER.warning("No metadata found for sensor: %s", sensor_key)
+        return
+
+    # The recorder owns the sums of entity sensors; their history lives in the lifetime counters (#86).
+    if metadata["has_sum"] and sensor_key in SENSOR_TYPES:
         return
 
     cutoff = dt_util.utcnow() - STATISTICS_MIN_AGE

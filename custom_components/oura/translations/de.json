@@ -143,7 +143,26 @@
       "resting_time": {"name": "Ruhezeit"},
       "sedentary_time": {"name": "Sitzzeit"},
       "equivalent_walking_distance": {"name": "Äquivalente Gehstrecke"},
-      "target_meters": {"name": "Zielstrecke"}
+      "target_meters": {"name": "Zielstrecke"},
+      "lifetime_total_sleep_duration": {"name": "Gesamtschlafdauer (gesamt)"},
+      "lifetime_deep_sleep_duration": {"name": "Tiefschlafdauer (gesamt)"},
+      "lifetime_rem_sleep_duration": {"name": "REM-Schlafdauer (gesamt)"},
+      "lifetime_light_sleep_duration": {"name": "Leichtschlafdauer (gesamt)"},
+      "lifetime_awake_time": {"name": "Wachzeit (gesamt)"},
+      "lifetime_time_in_bed": {"name": "Zeit im Bett (gesamt)"},
+      "lifetime_steps": {"name": "Schritte (gesamt)"},
+      "lifetime_active_calories": {"name": "Aktive Kalorien (gesamt)"},
+      "lifetime_total_calories": {"name": "Gesamtkalorien (gesamt)"},
+      "lifetime_met_min_high": {"name": "Hohe Aktivitäts-MET-Minuten (gesamt)"},
+      "lifetime_met_min_medium": {"name": "Mittlere Aktivitäts-MET-Minuten (gesamt)"},
+      "lifetime_met_min_low": {"name": "Niedrige Aktivitäts-MET-Minuten (gesamt)"},
+      "lifetime_inactivity_alerts": {"name": "Inaktivitätswarnungen (gesamt)"},
+      "lifetime_non_wear_time": {"name": "Nichttrage-Zeit des Rings (gesamt)"},
+      "lifetime_resting_time": {"name": "Ruhezeit (gesamt)"},
+      "lifetime_sedentary_time": {"name": "Sitzzeit (gesamt)"},
+      "lifetime_equivalent_walking_distance": {"name": "Äquivalente Gehstrecke (gesamt)"},
+      "lifetime_stress_high_duration": {"name": "Hohe Stressdauer (gesamt)"},
+      "lifetime_recovery_high_duration": {"name": "Hohe Erholungsdauer (gesamt)"}
     }
   },
   "services": {

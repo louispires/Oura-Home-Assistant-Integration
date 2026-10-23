@@ -5,7 +5,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 ## Features
 
 ✅ **OAuth2 Authentication** - Secure authentication using Home Assistant's application credentials  
-✅ **Comprehensive Data** - 98 sensors and 2 binary sensors covering sleep, readiness, activity, workout, session, tag, rest mode, stress, resilience, ring battery, and more  
+✅ **Comprehensive Data** - 117 sensors and 2 binary sensors covering sleep, readiness, activity, workout, session, tag, rest mode, stress, resilience, ring battery, lifetime totals, and more  
 ✅ **Extended Historical Data** - Load up to 48 months (4 years) of historical data on first setup (default: 3 months)  
 ✅ **Configurable Updates** - Data refresh interval configurable from 1-60 minutes (default: 5 minutes)  
 ✅ **Modern Architecture** - Built following the latest Home Assistant standards  
@@ -48,11 +48,15 @@ Current/Average/Minimum/Maximum Heart Rate, Last Heart Rate Reading, Stress High
 
 Workouts Today, Last Workout Type, Last Workout Distance, Last Workout Calories, Last Workout Intensity, Last Workout Duration, Last Workout Source, Mindfulness Sessions Today, Meditation Duration Today, Tags Today, Tag Count Today, Rest Mode Start, Rest Mode End
 
+### Lifetime Counters
+
+Lifetime Total/Deep/REM/Light Sleep Duration, Lifetime Awake Time, Lifetime Time in Bed, Lifetime Steps, Lifetime Active/Total Calories, Lifetime High/Medium/Low Activity MET Minutes, Lifetime Inactivity Alerts, Lifetime Ring Non-Wear Time, Lifetime Resting Time, Lifetime Sedentary Time, Lifetime Equivalent Walking Distance, Lifetime Stress/Recovery High Duration
+
 ### Binary Sensors
 
 Rest Mode, Ring Charging
 
-**Total: 98 sensors + 2 binary sensors** providing comprehensive health tracking
+**Total: 117 sensors + 2 binary sensors** providing comprehensive health tracking
 
 Sleep Efficiency is now sourced from Oura detailed sleep data so it reflects the actual percentage rather than the contributor score.
 

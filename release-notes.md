@@ -1,4 +1,35 @@
-﻿# Oura Ring v2 Integration v2.11.0
+﻿# Oura Ring v2 Integration v2.12.0
+
+## 🐛 FIXES IN v2.12.0 — one writer per sum statistic ([#86](https://github.com/louispires/Oura-Home-Assistant-Integration/issues/86))
+
+### Sum statistics had two writers
+
+- **Fixed**: the statistic of each daily sum sensor (steps, calories, sleep durations, MET minutes, activity/stress minutes, …) was written by Home Assistant's recorder (hourly, from the sensor's state) and by the integration's daily import (one row per day at 12:00 UTC), each with its own running sum. Hourly `change` graphs jumped up and back down around the import row, days went negative, and the daily reconcile could restart a sum from a recorder row and drop the history from the chain. The integration no longer imports sums into the daily sensors' statistics; the recorder is their only writer.
+
+### Daily totals counted the new day as a decrease
+
+- **Fixed**: daily `total` sensors (active/total calories, MET minutes, activity/resting/sedentary/non-wear time, inactivity alerts, sleep durations, time in bed, stress/recovery high duration, workouts/mindfulness sessions/meditation duration/tag count today) had no `last_reset`, so the drop back to a small value on a new day counted as a decrease. Each now reports the start of its Oura day as `last_reset`, which Home Assistant treats as a new cycle.
+- **Fixed**: `Equivalent Walking Distance` was a `measurement` sensor while its history was imported as a sum, so Home Assistant rewrote the statistic to mean-only and the sum restarted at every reconcile. It is now a `total` sensor. If **Developer tools → Statistics** lists an issue for it after upgrading, use **Fix issue**.
+
+## ✨ NEW IN v2.12.0 — Lifetime counters
+
+- **Added**: 19 `Lifetime …` sensors, one per daily sum (e.g. `sensor.oura_ring_lifetime_steps`): never-resetting totals since the start of the imported history. They hold the history of the daily sums: a `statistics-graph` card with `stat_types: change` shows per-day, per-week, or per-month totals ([example](https://github.com/louispires/Oura-Home-Assistant-Integration/blob/main/docs/DASHBOARDS.md#daily-history-from-lifetime-counters)).
+- Each counter's statistic has a single writer: the history is imported once, after that only the recorder writes rows. Data Oura syncs late (ring not synced, Home Assistant offline) is moved onto the day it belongs to, so a day's `change` matches Oura's value for that day.
+- Existing installs load the counters' history once in the background after upgrading (the configured number of historical months); the counters are unavailable until then.
+
+## ⚠️ UPGRADE NOTES
+
+- Rows written before the upgrade are not rewritten, so the daily sum sensors' old statistics keep their jumps. Use the Lifetime counters for history, or delete a daily sensor's statistics under **Developer tools → Statistics**.
+- On the first update after upgrading, each daily `total` sensor starts its first cycle and counts today's value so far once more in its own statistics.
+- The `oura.reconcile_statistics` action still backfills means (scores, heart rate, …), the statistics-only daily sums (workouts, sessions, tags, rest mode), and late data into the Lifetime counters (last 60 days).
+
+## 🧪 TESTING & VALIDATION
+
+- ✅ 230 automated tests passing (up from 192), including two against a real Home Assistant recorder: the counter's history import, joining the recorder's chain, and moving late data onto its own day give daily changes equal to Oura's values with sum equal to state from the move on; and a daily `total` sensor's new day adds to the sum instead of subtracting.
+
+Thanks to [@pavelnikanovich](https://github.com/pavelnikanovich) for the detailed analysis and the lifetime counter design in #86.
+
+# Oura Ring v2 Integration v2.11.0
 
 ## ✨ NEW IN v2.11.0 — Oura OpenAPI 1.41 alignment
 
