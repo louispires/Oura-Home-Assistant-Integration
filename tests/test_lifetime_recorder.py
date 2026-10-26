@@ -8,7 +8,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from homeassistant import bootstrap, config_entries, loader
 from homeassistant.components.recorder import get_instance
-from homeassistant.components.recorder.statistics import statistics_during_period
+from homeassistant.components.recorder.statistics import (
+    StatisticData,
+    StatisticMeanType,
+    StatisticMetaData,
+    async_import_statistics,
+    statistics_during_period,
+)
 from homeassistant.components.recorder.tasks import StatisticsTask
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er, recorder as recorder_helper
@@ -164,3 +170,50 @@ async def test_daily_total_new_day_is_a_new_cycle_not_a_decrease(hass):
         statistics_during_period, hass, START, None, {entity_id}, "5minute", None, {"sum"}
     )
     assert [row["sum"] for row in stats[entity_id]] == [0, 50, 70]
+
+
+@pytest.mark.anyio
+async def test_initialize_replaces_rows_left_by_an_earlier_entry(hass):
+    """Removing and re-adding the entry must not leave the old chain under the new history (#86)."""
+    er.async_get(hass).async_get_or_create(
+        "sensor", "oura", "eid_lifetime_steps", suggested_object_id="oura_ring_lifetime_steps"
+    )
+    async_import_statistics(
+        hass,
+        StatisticMetaData(
+            has_mean=False,
+            has_sum=True,
+            mean_type=StatisticMeanType.NONE,
+            name=None,
+            source="recorder",
+            statistic_id=SID,
+            unit_class=None,
+            unit_of_measurement="steps",
+        ),
+        [
+            StatisticData(start=datetime(2026, 10, 10, 12, tzinfo=timezone.utc), state=5000, sum=5000),
+            StatisticData(start=datetime(2026, 10, 19, 12, tzinfo=timezone.utc), state=9000, sum=9000),
+        ],
+    )
+    await get_instance(hass).async_block_till_done()
+    assert len(await _rows(hass, "hour")) == 2
+
+    now = START + timedelta(minutes=2)
+    shim = SimpleNamespace(
+        utcnow=lambda: now,
+        now=lambda: now,
+        start_of_local_day=dt_util.start_of_local_day,
+        as_utc=dt_util.as_utc,
+    )
+    with patch("custom_components.oura.lifetime.dt_util", new=shim),          patch("custom_components.oura.lifetime.Store") as store_cls:
+        store_cls.return_value.async_save = MagicMock(side_effect=_noop)
+        counters = OuraLifetimeCounters(hass, MagicMock(entry_id="eid"))
+        await counters.async_initialize(
+            _activity(("2026-10-18", 100), ("2026-10-19", 200), ("2026-10-20", 50))
+        )
+    await get_instance(hass).async_block_till_done()
+
+    assert [(start, s) for start, _state, s in await _rows(hass, "hour")] == [
+        (datetime(2026, 10, 18, 12, tzinfo=timezone.utc), 100),
+        (datetime(2026, 10, 19, 12, tzinfo=timezone.utc), 300),
+    ]

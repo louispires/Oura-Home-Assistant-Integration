@@ -136,3 +136,35 @@ async def test_import_statistics_leaves_sleep_sums_to_the_recorder(
     assert "sensor.oura_ring_total_sleep_duration" not in imported
     assert "sensor.oura_ring_deep_sleep_duration" not in imported
     assert imported["sensor.oura_ring_sleep_efficiency"][0]["mean"] == 90
+
+
+@pytest.mark.anyio
+async def test_import_statistics_ignores_rest_sessions(
+    mock_hass: HomeAssistant, mock_config_entry: ConfigEntry
+):
+    """A day with only a rest session gets no sleep statistics (#86)."""
+
+    data = {
+        "sleep_detail": {
+            "data": [
+                {"day": "2024-01-15", "type": "rest", "efficiency": 10},
+                {"day": "2024-01-16", "type": "long_sleep", "efficiency": 90},
+            ]
+        }
+    }
+
+    with patch("custom_components.oura.statistics.er.async_get") as mock_er_get, \
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha, \
+         patch("custom_components.oura.statistics.async_add_external_statistics"):
+
+        mock_registry = MagicMock()
+        mock_er_get.return_value = mock_registry
+        mock_registry.async_get_entity_id.return_value = None
+
+        await async_import_statistics(mock_hass, data, mock_config_entry)
+
+        imported = {
+            call.args[1]["statistic_id"]: call.args[2] for call in mock_import_ha.call_args_list
+        }
+
+    assert [row["mean"] for row in imported["sensor.oura_ring_sleep_efficiency"]] == [90]

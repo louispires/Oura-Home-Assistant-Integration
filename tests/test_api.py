@@ -250,3 +250,22 @@ async def test_heartrate_batched_requests_only_consumed_fields():
     assert client._async_get_all_pages.await_count > 1
     for call in client._async_get_all_pages.await_args_list:
         assert call.args[1]["fields"] == "timestamp,bpm"
+
+
+@pytest.mark.anyio
+async def test_sleep_detail_fetches_buffer_day_and_filters_prior():
+    """/sleep filters by bedtime_start: a night that began the evening before start_date is fetched (#86)."""
+    client = _make_client_with_mock_http()
+    client._async_get = AsyncMock(return_value={"data": [
+        {"day": "2026-10-23", "type": "long_sleep"},
+        {"day": "2026-10-24", "type": "long_sleep"},
+        {"day": "2026-10-25", "type": "late_nap"},
+        {"day": None, "type": "rest"},
+    ], "next_token": None})
+
+    result = await client._async_get_sleep_detail(date(2026, 10, 24), date(2026, 10, 26))
+
+    params = client._async_get.await_args.args[1]
+    assert params == {"start_date": "2026-10-23", "end_date": "2026-10-26"}
+    assert [record["day"] for record in result["data"]] == ["2026-10-24", "2026-10-25"]
+    assert result["next_token"] is None

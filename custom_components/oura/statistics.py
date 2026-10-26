@@ -402,12 +402,13 @@ def _collapse_sleep_detail_by_day(
     """Reduce sleep_detail records to one per Oura day for daily statistics.
 
     Prefers the "long_sleep" record; falls back to the longest
-    total_sleep_duration when a day has no long_sleep record.
+    total_sleep_duration when a day has no long_sleep record. Rest and other
+    non-sleep sessions never represent a day.
     """
     by_day: dict[str, dict[str, Any]] = {}
     for record in sleep_detail_data:
         day = record.get("day")
-        if not day:
+        if not day or record.get("type") not in _VALID_SLEEP_TYPES:
             continue
         existing = by_day.get(day)
         if existing is None:

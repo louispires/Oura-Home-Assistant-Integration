@@ -202,9 +202,82 @@ async def test_update_today_changes_state_without_move(
 
     assert counters.values()["lifetime_steps"] == 280
     assert counters._data["pending"] == []
-    store.async_save.assert_not_awaited()
-    store.async_delay_save.assert_called_once()
     recorder.async_adjust_statistics.assert_not_called()
+
+
+@pytest.mark.anyio
+async def test_update_saves_immediately(
+    mock_hass, mock_config_entry, frozen_now, store, registry, recorder, import_ha
+):
+    """A delayed save lost in a crash just after midnight would come back as late data (#86)."""
+    counters = await _counters(mock_hass, mock_config_entry, _activity(("2026-10-20", 50)), joined=LIFETIME_SOURCE_KEYS)
+    store.async_save.reset_mock()
+
+    await counters.async_update(_activity(("2026-10-20", 80)))
+    store.async_save.assert_awaited_once()
+    store.async_delay_save.assert_not_called()
+
+    store.async_save.reset_mock()
+    await counters.async_update(_activity(("2026-10-20", 80)))
+    store.async_save.assert_not_awaited()
+
+
+@pytest.mark.anyio
+async def test_initialize_skips_tomorrow(
+    mock_hass, mock_config_entry, frozen_now, store, registry, recorder, import_ha
+):
+    """An evening session Oura dates to tomorrow is not part of today's total (#86)."""
+    counters = await _counters(
+        mock_hass, mock_config_entry, _activity(("2026-10-20", 50), ("2026-10-21", 999))
+    )
+
+    assert counters.values()["lifetime_steps"] == 50
+    assert "2026-10-21" not in counters._data["days"]["steps"]
+
+
+@pytest.mark.anyio
+async def test_update_skips_tomorrow(
+    mock_hass, mock_config_entry, frozen_now, store, registry, recorder, import_ha
+):
+    counters = await _counters(mock_hass, mock_config_entry, _activity(("2026-10-20", 50)), joined=LIFETIME_SOURCE_KEYS)
+
+    await counters.async_update(_activity(("2026-10-20", 50), ("2026-10-21", 999)))
+
+    assert counters.values()["lifetime_steps"] == 50
+    assert counters._data["pending"] == []
+
+    # Once that day starts it is counted, on its own day, not as a move.
+    next_day = NOW + timedelta(days=1)
+    with patch("custom_components.oura.lifetime.dt_util.utcnow", return_value=next_day), \
+         patch("custom_components.oura.lifetime.dt_util.now", return_value=next_day):
+        await counters.async_update(_activity(("2026-10-20", 50), ("2026-10-21", 999)))
+
+    assert counters.values()["lifetime_steps"] == 1049
+    assert counters._data["pending"] == []
+
+
+@pytest.mark.anyio
+async def test_initialize_clears_existing_statistics(
+    mock_hass, mock_config_entry, frozen_now, store, registry, recorder, import_ha
+):
+    """Rows from a removed entry or a lost store must not sit under the new history (#86)."""
+    await _counters(mock_hass, mock_config_entry, _activity(("2026-10-19", 200)))
+
+    recorder.async_clear_statistics.assert_called_once()
+    (cleared,) = recorder.async_clear_statistics.call_args.args
+    assert set(cleared) == {f"sensor.oura_ring_{LIFETIME_PREFIX}{key}" for key in LIFETIME_SOURCE_KEYS}
+
+
+@pytest.mark.anyio
+async def test_initialize_without_entities_clears_nothing(
+    mock_hass, mock_config_entry, frozen_now, store, registry, recorder, import_ha
+):
+    registry.async_get_entity_id.side_effect = None
+    registry.async_get_entity_id.return_value = None
+
+    await _counters(mock_hass, mock_config_entry, _activity(("2026-10-19", 200)))
+
+    recorder.async_clear_statistics.assert_not_called()
 
 
 @pytest.mark.anyio
@@ -280,29 +353,79 @@ async def test_join_lifts_recorder_chain_onto_history_once(
 
     recorder.async_adjust_statistics.assert_called_once_with(SID, PERIOD, 350.0, "steps")
     assert "steps" not in counters._data["joined"]
+    assert counters._data["join_pending"]["steps"] == {"offset": 350.0, "at": NOW.isoformat()}
 
     _latest_row(recorder, {SID: {"start": PERIOD.timestamp(), "state": 350.0, "sum": 350.0}})
     store.async_save.reset_mock()
     await counters.async_update({})
 
     assert "steps" in counters._data["joined"]
+    assert "steps" not in counters._data["join_pending"]
     store.async_save.assert_awaited_once()
     recorder.async_adjust_statistics.assert_called_once()
 
 
 @pytest.mark.anyio
-async def test_join_repeated_after_restart_if_adjustment_was_lost(
+async def test_join_not_duplicated_on_quick_reload(
     mock_hass, mock_config_entry, frozen_now, store, registry, recorder, import_ha
 ):
+    """A reload while the recorder still holds the adjustment must not queue it again (#86)."""
+    counters = await _counters(mock_hass, mock_config_entry, _activity(("2026-10-20", 50)))
+    _latest_row(recorder, {SID: {"start": PERIOD.timestamp(), "state": 50.0, "sum": 0.0}})
+    await counters.async_update({})
+    store.async_load.return_value = counters._data
+
+    reloaded = OuraLifetimeCounters(mock_hass, mock_config_entry)
+    await reloaded.async_load()
+    await reloaded.async_update({})
+
+    recorder.async_adjust_statistics.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_join_rerequests_after_max_age(
+    mock_hass, mock_config_entry, frozen_now, store, registry, recorder, import_ha
+):
+    """An adjustment that never landed (hard crash) is asked for again."""
     counters = await _counters(mock_hass, mock_config_entry, _activity(("2026-10-20", 50)))
     _latest_row(recorder, {SID: {"start": PERIOD.timestamp(), "state": 50.0, "sum": 0.0}})
     await counters.async_update({})
 
-    restarted = OuraLifetimeCounters(mock_hass, mock_config_entry)
-    restarted._data = counters._data
-    await restarted.async_update({})
+    later = NOW + timedelta(days=2)
+    with patch("custom_components.oura.lifetime.dt_util.utcnow", return_value=later), \
+         patch("custom_components.oura.lifetime.dt_util.now", return_value=later):
+        await counters.async_update({})
 
     assert recorder.async_adjust_statistics.call_count == 2
+    assert counters._data["join_pending"]["steps"]["at"] == later.isoformat()
+
+
+@pytest.mark.anyio
+async def test_join_rerequests_when_offset_changed(
+    mock_hass, mock_config_entry, frozen_now, store, registry, recorder, import_ha
+):
+    """A different offset means the chain moved since the request; the old one no longer fits."""
+    counters = await _counters(mock_hass, mock_config_entry, _activity(("2026-10-20", 50)))
+    _latest_row(recorder, {SID: {"start": PERIOD.timestamp(), "state": 50.0, "sum": 0.0}})
+    await counters.async_update({})
+
+    _latest_row(recorder, {SID: {"start": PERIOD.timestamp(), "state": 50.0, "sum": 20.0}})
+    await counters.async_update({})
+
+    assert [call.args[2] for call in recorder.async_adjust_statistics.call_args_list] == [50.0, 30.0]
+
+
+@pytest.mark.anyio
+async def test_load_adds_join_pending_to_old_store(mock_hass, mock_config_entry, store):
+    """Stores written by 2.12.0-rc1 have no join_pending key."""
+    store.async_load.return_value = {
+        "live_since": PERIOD.isoformat(), "base": {}, "days": {}, "joined": [], "pending": []
+    }
+    counters = OuraLifetimeCounters(mock_hass, mock_config_entry)
+
+    await counters.async_load()
+
+    assert counters._data["join_pending"] == {}
 
 
 @pytest.mark.anyio

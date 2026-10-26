@@ -75,13 +75,15 @@ class OuraLifetimeCounters:
             hass, STORAGE_VERSION, storage_key(entry.entry_id)
         )
         self._data: dict[str, Any] | None = None
-        self._join_requested: set[str] = set()
         # A poll and the reconcile action may overlap; both must not apply the same move.
         self._lock = asyncio.Lock()
 
     async def async_load(self) -> None:
         """Load the stored counter state."""
-        self._data = await self._store.async_load()
+        data = await self._store.async_load()
+        if data is not None:
+            data.setdefault("join_pending", {})
+        self._data = data
 
     @property
     def initialized(self) -> bool:
@@ -105,7 +107,11 @@ class OuraLifetimeCounters:
 
     async def _async_initialize(self, data: dict[str, Any]) -> None:
         today = dt_util.now().date()
-        daily = daily_sum_values(data)
+        today_iso = today.isoformat()
+        daily = {
+            key: {day_iso: value for day_iso, value in values.items() if day_iso <= today_iso}
+            for key, values in daily_sum_values(data).items()
+        }
         self._data = {
             "live_since": dt_util.utcnow()
             .replace(minute=0, second=0, microsecond=0)
@@ -113,8 +119,17 @@ class OuraLifetimeCounters:
             "base": {key: 0.0 for key in LIFETIME_SOURCE_KEYS},
             "days": daily,
             "joined": [],
+            "join_pending": {},
             "pending": [],
         }
+        # Rows left by an earlier entry or a lost store would sit under the new history.
+        # The recorder runs the clear before the imports queued below.
+        if statistic_ids := [
+            statistic_id
+            for key in LIFETIME_SOURCE_KEYS
+            if (statistic_id := self._statistic_id(key)) is not None
+        ]:
+            get_instance(self.hass).async_clear_statistics(statistic_ids)
         for key in LIFETIME_SOURCE_KEYS:
             self._import_history(key, daily[key], today)
             self._compact(key, today)
@@ -144,7 +159,8 @@ class OuraLifetimeCounters:
         for key, values in daily_sum_values(data).items():
             days = self._data["days"].setdefault(key, {})
             for day_iso, value in values.items():
-                if day_iso < cutoff:
+                # Oura dates an evening session to the next day; it is counted once that day starts.
+                if day_iso < cutoff or day_iso > today_iso:
                     continue
                 delta = value - days.get(day_iso, 0.0)
                 if abs(delta) < 1e-9:
@@ -164,9 +180,9 @@ class OuraLifetimeCounters:
             for move in moves:
                 move["period"] = period.isoformat()
             self._data["pending"].extend(moves)
+        if changed:
+            # A change lost in a crash comes back as late data on the next start and is counted twice.
             await self._store.async_save(self._data)
-        elif changed:
-            self._store.async_delay_save(lambda: self._data, 60)
 
     def _compact(self, key: str, today: date) -> None:
         cutoff = (today - timedelta(days=RETENTION_DAYS)).isoformat()
@@ -232,7 +248,9 @@ class OuraLifetimeCounters:
         """Lift the recorder's chain, which starts at 0, onto the imported history."""
         live_since = datetime.fromisoformat(self._data["live_since"])
         joined: list[str] = self._data["joined"]
-        newly_joined = False
+        requested: dict[str, dict[str, Any]] = self._data["join_pending"]
+        now = dt_util.utcnow()
+        changed = False
         for key in LIFETIME_SOURCE_KEYS:
             if key in joined or (statistic_id := self._statistic_id(key)) is None:
                 continue
@@ -242,15 +260,23 @@ class OuraLifetimeCounters:
             offset = state - (row.get("sum") or 0.0)
             if _is_zero(offset, state):
                 joined.append(key)
-                self._join_requested.discard(key)
-                newly_joined = True
-            elif key not in self._join_requested:
-                # Idempotent across restarts: re-read until the queued adjustment shows up.
-                get_instance(self.hass).async_adjust_statistics(
-                    statistic_id, live_since, offset, self._unit(key)
-                )
-                self._join_requested.add(key)
-        if newly_joined:
+                requested.pop(key, None)
+                changed = True
+                continue
+            # The offset holds until the queued adjustment lands, also across a reload;
+            # asking again while it is queued would add it twice. Past the max age it was lost.
+            if (
+                (request := requested.get(key)) is not None
+                and _is_zero(offset - request["offset"], state)
+                and now - datetime.fromisoformat(request["at"]) < PENDING_MAX_AGE
+            ):
+                continue
+            get_instance(self.hass).async_adjust_statistics(
+                statistic_id, live_since, offset, self._unit(key)
+            )
+            requested[key] = {"offset": offset, "at": now.isoformat()}
+            changed = True
+        if changed:
             await self._store.async_save(self._data)
 
     async def _async_apply_pending(self) -> None:

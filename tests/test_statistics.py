@@ -161,6 +161,23 @@ def test_collapse_sleep_detail_by_day_falls_back_to_longest():
     assert collapsed[0]["total_sleep_duration"] == 3600
 
 
+def test_collapse_sleep_detail_ignores_rest_type():
+    """A rest session never represents a day, even when it is the only record (#86)."""
+    from custom_components.oura.statistics import _collapse_sleep_detail_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "rest", "total_sleep_duration": 99999},
+        {"day": "2024-01-15", "type": "late_nap", "total_sleep_duration": 1800},
+        {"day": "2024-01-16", "type": "rest", "total_sleep_duration": 3600},
+        {"day": "2024-01-17", "total_sleep_duration": 3600},  # missing type
+    ]
+
+    collapsed = _collapse_sleep_detail_by_day(records)
+
+    assert len(collapsed) == 1
+    assert collapsed[0]["type"] == "late_nap"
+
+
 def test_total_sleep_duration_not_in_collapsed_mapping():
     """Total Sleep Duration is summed separately, not read off the single collapsed record (issue #73)."""
     sleep_detail_mappings = DATA_SOURCE_CONFIG["sleep_detail"]["mappings"]

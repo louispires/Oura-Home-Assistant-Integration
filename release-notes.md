@@ -17,6 +17,15 @@
 - Each counter's statistic has a single writer: the history is imported once, after that only the recorder writes rows. Data Oura syncs late (ring not synced, Home Assistant offline) is moved onto the day it belongs to, so a day's `change` matches Oura's value for that day.
 - Existing installs load the counters' history once in the background after upgrading (the configured number of historical months); the counters are unavailable until then.
 
+### Fixed since v2.12.0-rc1
+
+- **Fixed**: a night that started before midnight was missing from the first day of each fetch, because Oura filters sleep sessions by bedtime. That day's sleep dropped and the Lifetime sleep counters booked a negative change at noon. The sleep fetch now reaches one day further back.
+- **Fixed**: an evening session that Oura dates to the next day no longer counts towards today's Lifetime totals before that day starts.
+- **Fixed**: rest sessions no longer stand in for a night in the per-night sleep statistics.
+- **Fixed**: reloading the integration while the recorder was busy could add the imported history to a Lifetime counter twice.
+- **Fixed**: removing and re-adding the integration left the old Lifetime statistics under the new history; they are now cleared before the history import.
+- **Fixed**: counter state is saved on every change, so a power loss just after midnight no longer counts the last update twice.
+
 ## ⚠️ UPGRADE NOTES
 
 - Rows written before the upgrade are not rewritten, so the daily sum sensors' old statistics keep their jumps. Use the Lifetime counters for history, or delete a daily sensor's statistics under **Developer tools → Statistics**.
@@ -25,9 +34,9 @@
 
 ## 🧪 TESTING & VALIDATION
 
-- ✅ 230 automated tests passing (up from 192), including two against a real Home Assistant recorder: the counter's history import, joining the recorder's chain, and moving late data onto its own day give daily changes equal to Oura's values with sum equal to state from the move on; and a daily `total` sensor's new day adds to the sum instead of subtracting.
+- ✅ 242 automated tests passing (up from 192), including three against a real Home Assistant recorder: the counter's history import, joining the recorder's chain, and moving late data onto its own day give daily changes equal to Oura's values with sum equal to state from the move on; a daily `total` sensor's new day adds to the sum instead of subtracting; and an earlier entry's Lifetime rows are replaced by the new history.
 
-Thanks to [@pavelnikanovich](https://github.com/pavelnikanovich) for the detailed analysis and the lifetime counter design in #86.
+Thanks to [@pavelnikanovich](https://github.com/pavelnikanovich) for the detailed analysis, the lifetime counter design, and the v2.12.0-rc1 test report in #86.
 
 # Oura Ring v2 Integration v2.11.0
 
