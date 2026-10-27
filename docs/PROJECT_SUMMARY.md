@@ -8,7 +8,7 @@ Current release baseline in repository:
 
 - **Version**: 2.11.0
 - **Minimum Home Assistant**: 2026.3.0
-- **Entity model**: 98 sensors + 2 binary sensors
+- **Entity model**: 99 sensors + 2 binary sensors
 - **Architecture**: DataUpdateCoordinator + configuration-driven sensor definitions
 - **Testing**: 192 tests passing in Docker test harness (`homeassistant/home-assistant:2026.9`)
 

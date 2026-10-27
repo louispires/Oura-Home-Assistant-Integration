@@ -41,6 +41,8 @@ If sensors have no values:
 2. Wait for the next update (default every 5 minutes).
 3. Check **Settings → System → Logs** for `oura` errors.
 
+If almost every sensor is unavailable at once, check **Ring Last Sync** (`sensor.oura_ring_ring_last_sync`). A time days in the past means nothing new has reached Oura's cloud since then: the ring has not synced through the Oura app, so there is nothing for the integration to show. Sensors only report data from the last day.
+
 An unavailable sensor is usually expected. Oura simply sends no value for it yet:
 
 - **Contributor scores** (Resting Heart Rate Score, HRV Balance Score, Sleep Regularity Score) need enough recent data, e.g. a full night of HRV.

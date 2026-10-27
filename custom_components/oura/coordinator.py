@@ -61,7 +61,15 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             days_back = reconcile_days if should_reconcile else 1
 
             data = await self.api_client.async_get_data(days_back=days_back)
-            processed_data = self._process_data(data)
+            # Entity state always comes from the regular 1-day window. Processing the
+            # wide reconcile fetch would bring back values older than that window for
+            # a single poll a day, so stale scores flap between a value and unavailable.
+            state_data = (
+                await self.api_client.async_get_data(days_back=1)
+                if should_reconcile
+                else data
+            )
+            processed_data = self._process_data(state_data)
 
             # Check if we got any actual data back
             # If all endpoints failed, processed_data will be empty
@@ -740,6 +748,9 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if battery_data and len(battery_data) > 0:
                 latest = battery_data[-1]
                 processed["ring_battery_level"] = latest.get("level")
+                # Battery samples are uploaded with every app sync, so the newest one
+                # shows how current the data in Oura's cloud is.
+                processed["ring_last_sync"] = self._parse_iso_datetime(latest.get("timestamp"))
                 charging = latest.get("charging")
                 processed["ring_battery_charging"] = bool(charging) if charging is not None else None
 

@@ -40,7 +40,7 @@ Do **not** register your local URL, DuckDNS URL, or Nabu Casa URL as Redirect UR
 
 ## Entity Summary
 
-- **Sensors**: 98
+- **Sensors**: 99
 - **Binary sensors**: 2
 - **Total entities**: 100
 
@@ -105,6 +105,7 @@ binary_sensor.oura_ring_ring_charging
 
 ```text
 sensor.oura_ring_ring_battery_level
+sensor.oura_ring_ring_last_sync
 ```
 
 For the complete list, see the [Sensor Reference](SENSORS.md).

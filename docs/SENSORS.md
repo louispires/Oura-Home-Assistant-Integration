@@ -1,6 +1,6 @@
 # Sensor Reference
 
-The integration creates **98 sensors and 2 binary sensors** on one **Oura Ring** device per account.
+The integration creates **99 sensors and 2 binary sensors** on one **Oura Ring** device per account.
 
 - Entity IDs below are the defaults. A second Oura account gets a `_2` suffix, and renamed entities keep whatever ID you gave them.
 - **Diagnostic** sensors appear in the device page's *Diagnostic* section and are left out of auto-generated dashboards.
@@ -167,13 +167,14 @@ SpO2 needs a Gen 3, Ring 4, or Ring 5. VO2 Max, Cardiovascular Age, and Pulse Wa
 | Tags Today | `sensor.oura_ring_tags_today` | | Comma-separated tags; `tags` and `enhanced_tags` attributes |
 | Tag Count Today | `sensor.oura_ring_tag_count_today` | | Number of distinct tags today |
 
-## Rest Mode and Ring (3)
+## Rest Mode and Ring (4)
 
 | Sensor | Entity ID | Unit | Notes |
 | --- | --- | --- | --- |
 | Rest Mode Start | `sensor.oura_ring_rest_mode_start` | | Timestamp of the active rest mode period |
 | Rest Mode End | `sensor.oura_ring_rest_mode_end` | | Timestamp of the active rest mode period |
 | Ring Battery Level | `sensor.oura_ring_ring_battery_level` | % | Diagnostic |
+| Ring Last Sync | `sensor.oura_ring_ring_last_sync` | | Diagnostic. Time of the newest ring battery sample in Oura's cloud; a value days old means the ring has not synced through the Oura app |
 
 ## Binary Sensors (2)
 

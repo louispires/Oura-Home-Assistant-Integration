@@ -117,6 +117,7 @@
       "rest_mode_start": {"name": "Beginn des Ruhemodus"},
       "rest_mode_end": {"name": "Ende des Ruhemodus"},
       "ring_battery_level": {"name": "Ringakkulevel"},
+      "ring_last_sync": {"name": "Letzte Ringsynchronisierung"},
       "deep_sleep_score": {"name": "Tiefschlaf-Beitrag"},
       "rem_sleep_score": {"name": "REM-Schlaf-Beitrag"},
       "total_sleep_score": {"name": "Gesamtschlaf-Beitrag"},

@@ -1,4 +1,14 @@
-﻿# Oura Ring v2 Integration v2.11.0
+﻿# Oura Ring v2 Integration (unreleased)
+
+## 🐛 FIXES
+
+- **Fixed**: scores older than the regular 1-day polling window no longer reappear for one poll a day. The once-a-day statistics reconcile fetches several days, and its data was also used for entity state, so a ring that had stopped syncing showed its last score for five minutes after midnight and went unavailable on the next poll. The reconcile fetch now feeds statistics only; entity state always comes from the regular window.
+
+## ✨ NEW
+
+- **Added**: `Ring Last Sync` diagnostic sensor (`sensor.oura_ring_ring_last_sync`), the time of the newest ring battery sample in Oura's cloud. It tells "the ring has not synced for days" apart from an integration problem when sensors go unavailable, and can drive an automation that reminds you to open the Oura app.
+
+# Oura Ring v2 Integration v2.11.0
 
 ## ✨ NEW IN v2.11.0 — Oura OpenAPI 1.41 alignment
 

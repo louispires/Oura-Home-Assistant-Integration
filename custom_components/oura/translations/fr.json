@@ -120,6 +120,7 @@
       "rest_mode_start": {"name": "Début du mode repos"},
       "rest_mode_end": {"name": "Fin du mode repos"},
       "ring_battery_level": {"name": "Niveau de batterie de la bague"},
+      "ring_last_sync": {"name": "Dernière synchronisation de la bague"},
       "deep_sleep_score": {"name": "Contribution du sommeil profond"},
       "rem_sleep_score": {"name": "Contribution du sommeil REM"},
       "total_sleep_score": {"name": "Contribution du sommeil total"},

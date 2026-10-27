@@ -192,4 +192,5 @@ SENSOR_TYPES: Final = {
 
     # Ring battery sensor
     "ring_battery_level": {"name": "Ring Battery Level", "icon": "mdi:battery", "unit": "%", "device_class": "battery", "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "ring_battery_level"},
+    "ring_last_sync": {"name": "Ring Last Sync", "icon": "mdi:cloud-sync", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "ring_battery_level"},
 }
