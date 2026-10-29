@@ -15,6 +15,7 @@ import voluptuous as vol
 from .const import (
     DOMAIN,
     OAUTH2_SCOPES,
+    USER_AGENT,
     CONF_UPDATE_INTERVAL,
     CONF_HISTORICAL_MONTHS,
     CONF_HISTORICAL_DATA_IMPORTED,
@@ -137,7 +138,7 @@ class OuraFlowHandler(
 
         async with session.get(
             "https://api.ouraring.com/v2/usercollection/personal_info",
-            headers={"Authorization": f"Bearer {access_token}"},
+            headers={"Authorization": f"Bearer {access_token}", "User-Agent": USER_AGENT},
         ) as response:
             response.raise_for_status()
             return await response.json()

@@ -139,7 +139,7 @@ docker compose -f docker-compose.test.yml run --rm test pytest tests/test_sensor
 - **Integration Version**: 2.11.0
 - **Minimum Home Assistant**: 2026.3.0
 - **Test Suite Status**: 192 passing tests (latest full Docker run)
-- **API Version**: Oura v2 (OpenAPI spec 1.41)
+- **API Version**: Oura v2 (OpenAPI spec 1.43)
 
 ## Support
 

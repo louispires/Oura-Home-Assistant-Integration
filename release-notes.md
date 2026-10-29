@@ -3,6 +3,7 @@
 ## 🐛 FIXES
 
 - **Fixed**: scores older than the regular 1-day polling window no longer reappear for one poll a day. The once-a-day statistics reconcile fetches several days, and its data was also used for entity state, so a ring that had stopped syncing showed its last score for five minutes after midnight and went unavailable on the next poll. The reconcile fetch now feeds statistics only; entity state always comes from the regular window.
+- **Changed**: API requests now send a `User-Agent` that names this integration, as Oura API 1.43 requires. Requests without one may be rejected with a 403, which the integration would treat as "no data" for optional endpoints. No other 1.42/1.43 change affects the integration (1.42 only removed the webhook `meal` data type, which isn't used).
 
 ## ✨ NEW
 
