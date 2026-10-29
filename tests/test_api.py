@@ -253,6 +253,24 @@ async def test_heartrate_batched_requests_only_consumed_fields():
 
 
 @pytest.mark.anyio
+async def test_sleep_detail_fetches_buffer_day_and_filters_prior():
+    """/sleep filters by bedtime_start: a night that began the evening before start_date is fetched (#86)."""
+    client = _make_client_with_mock_http()
+    client._async_get_all_pages = AsyncMock(return_value=[
+        {"day": "2026-10-23", "type": "long_sleep"},
+        {"day": "2026-10-24", "type": "long_sleep"},
+        {"day": "2026-10-25", "type": "late_nap"},
+        {"day": None, "type": "rest"},
+    ])
+
+    result = await client._async_get_sleep_detail(date(2026, 10, 24), date(2026, 10, 26))
+
+    params = client._async_get_all_pages.await_args.args[1]
+    assert params == {"start_date": "2026-10-23", "end_date": "2026-10-26"}
+    assert [record["day"] for record in result["data"]] == ["2026-10-24", "2026-10-25"]
+
+
+@pytest.mark.anyio
 async def test_async_get_sends_integration_user_agent():
     """Oura API 1.43 requires a User-Agent that names the client app."""
     client = _make_client_with_mock_http()

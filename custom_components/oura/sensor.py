@@ -1,13 +1,16 @@
 """Sensor platform for Oura Ring integration."""
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity
+from datetime import datetime
+
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .const import ATTRIBUTION, DOMAIN, RING_MODEL_NAMES, SENSOR_TYPES
 from .coordinator import OuraDataUpdateCoordinator
@@ -52,6 +55,7 @@ class OuraSensor(CoordinatorEntity[OuraDataUpdateCoordinator], SensorEntity):
         self._attr_device_class = sensor_info.get("device_class")
         self._attr_state_class = sensor_info.get("state_class")
         self._attr_entity_category = sensor_info.get("entity_category")
+        self._data_category = sensor_info.get("data_category")
         
         # Set options for enum sensors
         if sensor_info.get("device_class") == "enum" and "options" in sensor_info:
@@ -79,6 +83,17 @@ class OuraSensor(CoordinatorEntity[OuraDataUpdateCoordinator], SensorEntity):
     def native_value(self):
         """Return the state of the sensor."""
         return self.coordinator.data.get(self._sensor_type)
+
+    @property
+    def last_reset(self) -> datetime | None:
+        """Return the start of the Oura day the daily total belongs to."""
+        # Without it the recorder counts the daily drop back to 0 as a decrease (#86)
+        if self._attr_state_class != SensorStateClass.TOTAL or not self.coordinator.data:
+            return None
+        day = self.coordinator.data.get(f"_day_{self._data_category}")
+        if day is None:
+            return None
+        return dt_util.start_of_local_day(day)
 
     @property
     def extra_state_attributes(self) -> dict[str, object] | None:

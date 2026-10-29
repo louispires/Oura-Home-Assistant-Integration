@@ -36,7 +36,8 @@ custom_components/oura/
 ├── coordinator.py               # OuraDataUpdateCoordinator: modular _process_* methods per data category
 ├── sensor.py                    # OuraSensor: CoordinatorEntity, driven by SENSOR_TYPES dict
 ├── binary_sensor.py             # Rest mode + ring charging binary sensors
-├── statistics.py                # Historical import + daily reconcile as HA long-term statistics
+├── statistics.py                # Historical import + daily reconcile as HA long-term statistics (means + statistics-only sums)
+├── lifetime.py                  # Lifetime counters: history of entity sums, recorder-owned statistics, late-data moves (#86)
 ├── config_flow.py               # OAuth2 + options flow (update interval, historical months, reconcile days, re-import toggle)
 ├── const.py                     # SENSOR_TYPES (single source of truth), API URLs, scopes, defaults
 ├── application_credentials.py   # OAuth2 credential provider (moi.ouraring.com primary, legacy fallback)
@@ -50,7 +51,7 @@ custom_components/oura/
 1. Add entry to `SENSOR_TYPES` in `const.py`
 2. Add matching translation key in `strings.json` (+ all `translations/*.json`; `tests/test_translations.py` enforces parity)
 3. Ensure coordinator `_process_*` populates `coordinator.data[key]`
-4. Add `STATISTICS_METADATA` + `DATA_SOURCE_CONFIG` mapping in `statistics.py` unless the sensor is intentionally excluded (timestamps, text, "last workout" style)
+4. Add `STATISTICS_METADATA` + `DATA_SOURCE_CONFIG` mapping in `statistics.py` unless the sensor is intentionally excluded (timestamps, text, "last workout" style). A daily sum with an entity (`has_sum`) is never imported into its own statistic (the recorder owns it, #86); add its key to `LIFETIME_SOURCE_KEYS` in `const.py` instead so it gets a lifetime counter
 5. Add a row to `docs/SENSORS.md` and bump the sensor counts in README, `docs/SENSORS.md`, `docs/QUICKREF.md`, `docs/INSTALLATION.md`, `docs/PROJECT_SUMMARY.md`, `info.md`
 
 To add an API endpoint: add to `API_ENDPOINTS` dict in `api.py`, add `_async_get_*` method, include in the `asyncio.gather` call, add a `_process_*` step in coordinator.

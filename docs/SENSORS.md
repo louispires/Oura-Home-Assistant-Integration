@@ -1,6 +1,6 @@
 # Sensor Reference
 
-The integration creates **99 sensors and 2 binary sensors** on one **Oura Ring** device per account.
+The integration creates **118 sensors and 2 binary sensors** on one **Oura Ring** device per account.
 
 - Entity IDs below are the defaults. A second Oura account gets a `_2` suffix, and renamed entities keep whatever ID you gave them.
 - **Diagnostic** sensors appear in the device page's *Diagnostic* section and are left out of auto-generated dashboards.
@@ -18,7 +18,8 @@ The integration creates **99 sensors and 2 binary sensors** on one **Oura Ring**
 - [Sleep Optimization](#sleep-optimization-2)
 - [Workouts](#workouts-7)
 - [Sessions and Tags](#sessions-and-tags-4)
-- [Rest Mode and Ring](#rest-mode-and-ring-3)
+- [Rest Mode and Ring](#rest-mode-and-ring-4)
+- [Lifetime Counters](#lifetime-counters-19)
 - [Binary Sensors](#binary-sensors-2)
 
 ## Sleep (27)
@@ -175,6 +176,34 @@ SpO2 needs a Gen 3, Ring 4, or Ring 5. VO2 Max, Cardiovascular Age, and Pulse Wa
 | Rest Mode End | `sensor.oura_ring_rest_mode_end` | | Timestamp of the active rest mode period |
 | Ring Battery Level | `sensor.oura_ring_ring_battery_level` | % | Diagnostic |
 | Ring Last Sync | `sensor.oura_ring_ring_last_sync` | | Diagnostic. Time of the newest ring battery sample in Oura's cloud; a value days old means the ring has not synced through the Oura app |
+
+## Lifetime Counters (19)
+
+Never-resetting totals of the daily sums: the sum of every day since the start of the imported history, plus today so far. The imported history lives in these counters' long-term statistics, so a `statistics-graph` card with `stat_types: change` shows each day's, week's, or month's total ([example](DASHBOARDS.md#daily-history-from-lifetime-counters)). Data Oura syncs late is moved onto the day it belongs to.
+
+The daily sensors they are based on (Steps, Active Calories, …) start a new cycle every Oura day; their own statistics only cover the time Home Assistant recorded them.
+
+| Sensor | Entity ID | Unit | Notes |
+| --- | --- | --- | --- |
+| Lifetime Total Sleep Duration | `sensor.oura_ring_lifetime_total_sleep_duration` | h | Naps included |
+| Lifetime Deep Sleep Duration | `sensor.oura_ring_lifetime_deep_sleep_duration` | h | |
+| Lifetime REM Sleep Duration | `sensor.oura_ring_lifetime_rem_sleep_duration` | h | |
+| Lifetime Light Sleep Duration | `sensor.oura_ring_lifetime_light_sleep_duration` | h | |
+| Lifetime Awake Time | `sensor.oura_ring_lifetime_awake_time` | h | |
+| Lifetime Time in Bed | `sensor.oura_ring_lifetime_time_in_bed` | h | |
+| Lifetime Steps | `sensor.oura_ring_lifetime_steps` | steps | |
+| Lifetime Active Calories | `sensor.oura_ring_lifetime_active_calories` | kcal | |
+| Lifetime Total Calories | `sensor.oura_ring_lifetime_total_calories` | kcal | |
+| Lifetime High Activity MET Minutes | `sensor.oura_ring_lifetime_high_activity_met_minutes` | | |
+| Lifetime Medium Activity MET Minutes | `sensor.oura_ring_lifetime_medium_activity_met_minutes` | | |
+| Lifetime Low Activity MET Minutes | `sensor.oura_ring_lifetime_low_activity_met_minutes` | | |
+| Lifetime Inactivity Alerts | `sensor.oura_ring_lifetime_inactivity_alerts` | | Diagnostic |
+| Lifetime Ring Non-Wear Time | `sensor.oura_ring_lifetime_ring_non_wear_time` | min | Diagnostic |
+| Lifetime Resting Time | `sensor.oura_ring_lifetime_resting_time` | min | |
+| Lifetime Sedentary Time | `sensor.oura_ring_lifetime_sedentary_time` | min | |
+| Lifetime Equivalent Walking Distance | `sensor.oura_ring_lifetime_equivalent_walking_distance` | m | |
+| Lifetime Stress High Duration | `sensor.oura_ring_lifetime_stress_high_duration` | min | ⚠️ |
+| Lifetime Recovery High Duration | `sensor.oura_ring_lifetime_recovery_high_duration` | min | ⚠️ |
 
 ## Binary Sensors (2)
 

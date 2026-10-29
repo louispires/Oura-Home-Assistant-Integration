@@ -58,6 +58,7 @@ def test_state_classes_improved():
         "met_min_low": "total",
         "stress_high_duration": "total",
         "recovery_high_duration": "total",
+        "equivalent_walking_distance": "total",
     }
     
     for sensor_key, expected_state_class in total_sensors.items():

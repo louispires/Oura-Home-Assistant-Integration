@@ -18,10 +18,13 @@ def _make_entry(imported: bool) -> MagicMock:
     return entry
 
 
-def _make_coordinator() -> MagicMock:
+def _make_coordinator(lifetime_initialized: bool = True) -> MagicMock:
     coordinator = MagicMock()
     coordinator.async_config_entry_first_refresh = AsyncMock()
     coordinator.async_load_historical_data = AsyncMock()
+    coordinator.async_initialize_lifetime = MagicMock(return_value="lifetime_init")
+    coordinator.lifetime.async_load = AsyncMock()
+    coordinator.lifetime.initialized = lifetime_initialized
     return coordinator
 
 
@@ -98,6 +101,23 @@ async def test_existing_install_skips_import(mock_hass):
 
     assert result is True
     assert _call_names(manager) == ["first_refresh", "forward", "add_update_listener"]
+    entry.async_create_background_task.assert_not_called()
+
+
+@pytest.mark.anyio
+async def test_existing_install_initialises_lifetime_counters_in_background(mock_hass):
+    """Installs from before the lifetime counters load their history without holding up startup."""
+    entry = _make_entry(imported=True)
+    coordinator = _make_coordinator(lifetime_initialized=False)
+
+    result, manager = await _run_setup(mock_hass, entry, coordinator)
+
+    assert result is True
+    coordinator.lifetime.async_load.assert_awaited_once()
+    coordinator.async_initialize_lifetime.assert_called_once_with(90)
+    entry.async_create_background_task.assert_called_once()
+    assert entry.async_create_background_task.call_args.args[1] == "lifetime_init"
+    assert "load_historical" not in _call_names(manager)
 
 
 def _bare_coordinator(mock_hass, mock_config_entry, api_data) -> OuraDataUpdateCoordinator:
@@ -108,6 +128,8 @@ def _bare_coordinator(mock_hass, mock_config_entry, api_data) -> OuraDataUpdateC
     coordinator.api_client.async_get_data = AsyncMock(return_value=api_data)
     coordinator.data = None
     coordinator._last_reconcile_day = None
+    coordinator.lifetime = MagicMock(initialized=False)
+    coordinator._lifetime_retry_days = None
     return coordinator
 
 

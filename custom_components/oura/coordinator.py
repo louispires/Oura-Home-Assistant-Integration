@@ -19,6 +19,7 @@ from .const import (
     CONF_STATISTICS_RECONCILE_DAYS,
     DEFAULT_STATISTICS_RECONCILE_DAYS,
 )
+from .lifetime import OuraLifetimeCounters
 from .statistics import async_import_statistics
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,6 +46,9 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.entry = entry
         self.historical_data_loaded = False
         self._last_reconcile_day: date | None = None
+        self.lifetime = OuraLifetimeCounters(hass, entry)
+        # History days to retry the lifetime counter initialisation with, if it failed.
+        self._lifetime_retry_days: int | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data via API."""
@@ -98,7 +102,11 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     _LOGGER.warning(
                         "Statistics reconciliation failed (will retry): %s", stats_err
                     )
+                if self._lifetime_retry_days and not self.lifetime.initialized:
+                    await self._async_try_initialize_lifetime(self._lifetime_retry_days)
 
+            # Last step before returning: late-data moves are timed to the state write.
+            await self._async_update_lifetime(data, processed_data)
             return processed_data
 
         except OAuth2TokenRequestReauthError as err:
@@ -142,6 +150,12 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.info("Loading %d days of historical data...", days)
             historical_data = await self.api_client.async_get_data(days_back=days)
 
+            if self.lifetime.initialized:
+                await self._async_update_lifetime(historical_data, {})
+            else:
+                await self._async_try_initialize_lifetime(days, historical_data)
+            self._publish_lifetime()
+
             # Import historical data as long-term statistics
             try:
                 await async_import_statistics(self.hass, historical_data, self.entry)
@@ -173,7 +187,49 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         data = await self.api_client.async_get_data(days_back=days)
         await async_import_statistics(self.hass, data, self.entry)
         self._last_reconcile_day = dt_util.now().date()
+        await self._async_update_lifetime(data, {})
+        self._publish_lifetime()
         _LOGGER.info("Statistics reconciliation complete")
+
+    async def async_initialize_lifetime(self, days: int) -> None:
+        """Load the lifetime counters' history once (installs from before the counters)."""
+        if await self._async_try_initialize_lifetime(days):
+            self._publish_lifetime()
+
+    async def _async_try_initialize_lifetime(
+        self, days: int, data: dict[str, Any] | None = None
+    ) -> bool:
+        """Initialise the lifetime counters; on failure retry with the daily reconcile."""
+        try:
+            if data is None:
+                data = await self.api_client.async_get_data(days_back=days)
+            await self.lifetime.async_initialize(data)
+        except Exception as err:
+            self._lifetime_retry_days = days
+            _LOGGER.warning(
+                "Could not initialise lifetime counters (will retry with the daily reconcile): %s",
+                err,
+            )
+            return False
+        self._lifetime_retry_days = None
+        return True
+
+    async def _async_update_lifetime(
+        self, data: dict[str, Any], processed: dict[str, Any]
+    ) -> None:
+        """Feed fetched data to the lifetime counters and add their states to ``processed``."""
+        if not self.lifetime.initialized:
+            return
+        try:
+            await self.lifetime.async_update(data)
+        except Exception as err:
+            _LOGGER.warning("Lifetime counter update failed: %s", err)
+        processed.update(self.lifetime.values())
+
+    def _publish_lifetime(self) -> None:
+        """Push the current counter states to the entities outside a poll."""
+        if self.data is not None and self.lifetime.initialized:
+            self.async_set_updated_data({**self.data, **self.lifetime.values()})
 
     def _process_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """Process the raw API data into sensor values.
@@ -319,6 +375,7 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # completed records exist for the same day.
             main_sleep = [r for r in completed if r.get("type") == "long_sleep"]
             latest_sleep_detail = (main_sleep or completed)[-1]
+            processed["_day_sleep_detail"] = self._parse_api_day(latest_sleep_detail.get("day"))
         else:
             # No completed record yet (e.g. ring not synced after midnight).
             # Preserve last known bedtime values so sensors don't flip to Unknown.
@@ -427,6 +484,7 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if activity_data := data.get("activity", {}).get("data"):
             if activity_data and len(activity_data) > 0:
                 latest_activity = activity_data[-1]
+                processed["_day_activity"] = self._parse_api_day(latest_activity.get("day"))
                 processed["activity_score"] = latest_activity.get("score")
                 processed["steps"] = latest_activity.get("steps")
                 processed["active_calories"] = latest_activity.get("active_calories")
@@ -502,6 +560,7 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if stress_data := data.get("stress", {}).get("data"):
             if stress_data and len(stress_data) > 0:
                 latest_stress = stress_data[-1]
+                processed["_day_stress"] = self._parse_api_day(latest_stress.get("day"))
                 if (stress_high := latest_stress.get("stress_high")) is not None:
                     processed["stress_high_duration"] = stress_high / 60
                 if (recovery_high := latest_stress.get("recovery_high")) is not None:
@@ -619,6 +678,7 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _process_workout(self, data: dict[str, Any], processed: dict[str, Any]) -> None:
         """Process workout summaries for current-day entities."""
+        processed["_day_workout"] = dt_util.now().date()
         if workout_data := data.get("workout", {}).get("data"):
             if workout_data and len(workout_data) > 0:
                 today = dt_util.now().date()
@@ -668,6 +728,7 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     and session.get("type") in mindfulness_types
                 ]
 
+                processed["_day_session"] = today
                 processed["mindfulness_sessions_today"] = len(today_sessions)
 
                 total_duration_seconds = 0.0
@@ -694,6 +755,7 @@ class OuraDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         today_tags.extend(str(tag) for tag in tags if tag)
 
                 unique_tags = list(dict.fromkeys(today_tags))
+                processed["_day_tag"] = today
                 processed["tags_today"] = ", ".join(unique_tags) if unique_tags else ""
                 processed["tag_count_today"] = len(unique_tags)
                 processed["_tags_today_list"] = unique_tags

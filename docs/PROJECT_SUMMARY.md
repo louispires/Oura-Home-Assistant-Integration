@@ -6,11 +6,11 @@ Home Assistant custom integration for Oura Ring v2 API using OAuth2.
 
 Current release baseline in repository:
 
-- **Version**: 2.11.0
+- **Version**: 2.12.0
 - **Minimum Home Assistant**: 2026.3.0
-- **Entity model**: 99 sensors + 2 binary sensors
+- **Entity model**: 118 sensors + 2 binary sensors
 - **Architecture**: DataUpdateCoordinator + configuration-driven sensor definitions
-- **Testing**: 192 tests passing in Docker test harness (`homeassistant/home-assistant:2026.9`)
+- **Testing**: 247 tests passing in Docker test harness (`homeassistant/home-assistant:2026.9`)
 
 ## Core Architecture
 

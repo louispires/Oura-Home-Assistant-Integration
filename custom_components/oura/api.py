@@ -190,13 +190,24 @@ class OuraApiClient:
             return {"data": [], _HEARTRATE_FAILED_MARKER: True}
 
     async def _async_get_sleep_detail(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
-        """Get detailed sleep data including HRV."""
+        """Get detailed sleep data including HRV.
+
+        Oura filters /sleep by bedtime_start, so a session that belongs to
+        start_date but began the evening before is missed. Query one day back
+        and drop the buffer day's own, incomplete records (#86).
+        """
         url = f"{API_BASE_URL}/sleep"
         params = {
-            "start_date": start_date.isoformat(),
+            "start_date": (start_date - timedelta(days=1)).isoformat(),
             "end_date": end_date.isoformat(),
         }
-        return await self._async_get_range(url, params)
+        result = await self._async_get_range(url, params)
+        start_iso = start_date.isoformat()
+        result["data"] = [
+            record for record in result["data"]
+            if (record.get("day") or "") >= start_iso
+        ]
+        return result
 
     async def _async_get_stress(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
         """Get daily stress data."""

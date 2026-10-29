@@ -1,10 +1,12 @@
 """Tests for Oura Ring sensor platform."""
+from datetime import date
 from unittest.mock import MagicMock, Mock
 
 import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ID
 from homeassistant.helpers.device_registry import DeviceEntryType
+from homeassistant.util import dt as dt_util
 
 from custom_components.oura.const import DOMAIN, SENSOR_TYPES
 from custom_components.oura.binary_sensor import OuraRestModeBinarySensor
@@ -245,7 +247,46 @@ def test_workouts_today_sensor_without_list(mock_coordinator):
     assert sensor.extra_state_attributes is None
 
 
-def test_rest_mode_binary_sensor(mock_coordinator):
+@pytest.mark.parametrize(
+    ("sensor_type", "day_key"),
+    [
+        ("active_calories", "_day_activity"),
+        ("equivalent_walking_distance", "_day_activity"),
+        ("total_sleep_duration", "_day_sleep_detail"),
+        ("stress_high_duration", "_day_stress"),
+        ("workouts_today", "_day_workout"),
+        ("meditation_duration_today", "_day_session"),
+        ("tag_count_today", "_day_tag"),
+    ],
+)
+def test_daily_total_sensor_last_reset_is_start_of_its_day(mock_coordinator, sensor_type, day_key):
+    """Daily totals report last_reset so the recorder sees a new day as a new cycle (#86)."""
+    mock_coordinator.data = {sensor_type: 10, day_key: date(2026, 10, 20)}
+    sensor = OuraSensor(mock_coordinator, sensor_type, SENSOR_TYPES[sensor_type])
+
+    assert sensor.last_reset == dt_util.start_of_local_day(date(2026, 10, 20))
+    assert sensor.state_attributes == {"last_reset": sensor.last_reset.isoformat()}
+
+    mock_coordinator.data[day_key] = date(2026, 10, 21)
+    assert sensor.last_reset == dt_util.start_of_local_day(date(2026, 10, 21))
+
+
+def test_daily_total_sensor_last_reset_none_without_day(mock_coordinator):
+    """No day known means no last_reset."""
+    mock_coordinator.data = {"active_calories": 300}
+    sensor = OuraSensor(mock_coordinator, "active_calories", SENSOR_TYPES["active_calories"])
+
+    assert sensor.last_reset is None
+
+
+@pytest.mark.parametrize("sensor_type", ["steps", "activity_score"])
+def test_non_total_sensor_has_no_last_reset(mock_coordinator, sensor_type):
+    """HA only accepts last_reset on state_class total."""
+    mock_coordinator.data = {sensor_type: 100, "_day_activity": date(2026, 10, 20)}
+    sensor = OuraSensor(mock_coordinator, sensor_type, SENSOR_TYPES[sensor_type])
+
+    assert sensor.last_reset is None
+
     """Test rest mode binary sensor state and attributes."""
     mock_coordinator.data = {
         "rest_mode_active": True,

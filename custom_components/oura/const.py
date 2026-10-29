@@ -134,7 +134,7 @@ SENSOR_TYPES: Final = {
     "non_wear_time": {"name": "Ring Non-Wear Time", "icon": "mdi:watch-vibrate-off", "unit": UnitOfTime.MINUTES, "device_class": "duration", "state_class": "total", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "activity"},
     "resting_time": {"name": "Resting Time", "icon": "mdi:bed", "unit": UnitOfTime.MINUTES, "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
     "sedentary_time": {"name": "Sedentary Time", "icon": "mdi:seat", "unit": UnitOfTime.MINUTES, "device_class": "duration", "state_class": "total", "entity_category": None, "data_category": "activity"},
-    "equivalent_walking_distance": {"name": "Equivalent Walking Distance", "icon": "mdi:walk", "unit": UnitOfLength.METERS, "device_class": "distance", "state_class": "measurement", "entity_category": None, "data_category": "activity"},
+    "equivalent_walking_distance": {"name": "Equivalent Walking Distance", "icon": "mdi:walk", "unit": UnitOfLength.METERS, "device_class": "distance", "state_class": "total", "entity_category": None, "data_category": "activity"},
     "target_meters": {"name": "Target Distance", "icon": "mdi:bullseye", "unit": UnitOfLength.METERS, "device_class": "distance", "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "activity"},
 
     # Heart Rate sensors (from heartrate endpoint - more granular data)
@@ -198,3 +198,39 @@ SENSOR_TYPES: Final = {
     "ring_battery_level": {"name": "Ring Battery Level", "icon": "mdi:battery", "unit": "%", "device_class": "battery", "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "ring_battery_level"},
     "ring_last_sync": {"name": "Ring Last Sync", "icon": "mdi:cloud-sync", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "ring_battery_level"},
 }
+
+# Daily sums that also get a never-resetting lifetime counter. Their long-term history lives
+# in the counters, so the recorder stays the only writer of each statistic (#86).
+LIFETIME_PREFIX: Final = "lifetime_"
+LIFETIME_SOURCE_KEYS: Final = (
+    "total_sleep_duration",
+    "deep_sleep_duration",
+    "rem_sleep_duration",
+    "light_sleep_duration",
+    "awake_time",
+    "time_in_bed",
+    "steps",
+    "active_calories",
+    "total_calories",
+    "met_min_high",
+    "met_min_medium",
+    "met_min_low",
+    "inactivity_alerts",
+    "non_wear_time",
+    "resting_time",
+    "sedentary_time",
+    "equivalent_walking_distance",
+    "stress_high_duration",
+    "recovery_high_duration",
+)
+SENSOR_TYPES.update(
+    {
+        f"{LIFETIME_PREFIX}{key}": {
+            **SENSOR_TYPES[key],
+            "name": f"Lifetime {SENSOR_TYPES[key]['name']}",
+            "state_class": "total",
+            "data_category": "lifetime",
+        }
+        for key in LIFETIME_SOURCE_KEYS
+    }
+)

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components.oura.const import SENSOR_TYPES
 from custom_components.oura.statistics import (
     STATISTICS_METADATA,
     DATA_SOURCE_CONFIG,
@@ -160,6 +161,23 @@ def test_collapse_sleep_detail_by_day_falls_back_to_longest():
     assert collapsed[0]["total_sleep_duration"] == 3600
 
 
+def test_collapse_sleep_detail_ignores_rest_type():
+    """A rest session never represents a day, even when it is the only record (#86)."""
+    from custom_components.oura.statistics import _collapse_sleep_detail_by_day
+
+    records = [
+        {"day": "2024-01-15", "type": "rest", "total_sleep_duration": 99999},
+        {"day": "2024-01-15", "type": "late_nap", "total_sleep_duration": 1800},
+        {"day": "2024-01-16", "type": "rest", "total_sleep_duration": 3600},
+        {"day": "2024-01-17", "total_sleep_duration": 3600},  # missing type
+    ]
+
+    collapsed = _collapse_sleep_detail_by_day(records)
+
+    assert len(collapsed) == 1
+    assert collapsed[0]["type"] == "late_nap"
+
+
 def test_total_sleep_duration_not_in_collapsed_mapping():
     """Total Sleep Duration is summed separately, not read off the single collapsed record (issue #73)."""
     sleep_detail_mappings = DATA_SOURCE_CONFIG["sleep_detail"]["mappings"]
@@ -311,6 +329,7 @@ def test_statistics_metadata_state_class_alignment():
         "met_min_low",
         "stress_high_duration",
         "recovery_high_duration",
+        "equivalent_walking_distance",
         "daily_workouts",
         "daily_workout_distance",
         "daily_workout_calories",
@@ -358,6 +377,13 @@ def test_statistics_metadata_state_class_alignment():
         assert STATISTICS_METADATA[sensor_key]["has_sum"] is False
 
 
+def test_sum_statistics_entities_have_sum_state_class():
+    """A sum statistic on a measurement entity gets rewritten to mean-only by the recorder (#86)."""
+    for sensor_key, meta in STATISTICS_METADATA.items():
+        if meta["has_sum"] and sensor_key in SENSOR_TYPES:
+            assert SENSOR_TYPES[sensor_key]["state_class"] in ("total", "total_increasing"), sensor_key
+
+
 @pytest.mark.anyio
 async def test_create_statistic_builds_cumulative_sum(mock_hass, mock_config_entry):
     """Test that has_sum sensors use sorted data points with cumulative sum."""
@@ -368,19 +394,36 @@ async def test_create_statistic_builds_cumulative_sum(mock_hass, mock_config_ent
     ]
 
     with patch("custom_components.oura.statistics.er.async_get") as mock_er_get, \
-         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha:
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha, \
+         patch("custom_components.oura.statistics._get_baseline_sum", new=AsyncMock(return_value=0.0)):
         mock_registry = MagicMock()
         mock_er_get.return_value = mock_registry
-        mock_registry.async_get_entity_id.return_value = "sensor.oura_ring_steps"
+        mock_registry.async_get_entity_id.return_value = None
 
-        await _create_statistic(mock_hass, "steps", data_points, mock_config_entry)
+        await _create_statistic(mock_hass, "daily_workouts", data_points, mock_config_entry)
 
     assert mock_import_ha.call_count == 1
     _, metadata, statistics = mock_import_ha.call_args.args
-    assert metadata["statistic_id"] == "sensor.oura_ring_steps"
+    assert metadata["statistic_id"] == "sensor.oura_ring_daily_workouts"
     assert [point["start"].day for point in statistics] == [1, 2, 3]
     assert [point["state"] for point in statistics] == [100, 200, 300]
     assert [point["sum"] for point in statistics] == [100, 300, 600]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("sensor_key", ["steps", "total_sleep_duration", "equivalent_walking_distance"])
+async def test_create_statistic_leaves_entity_sums_to_the_recorder(
+    mock_hass, mock_config_entry, sensor_key
+):
+    """A second writer of an entity's sum statistic breaks its chain (#86)."""
+    data_points = [{"timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc), "value": 100}]
+
+    with patch("custom_components.oura.statistics.er.async_get") as mock_er_get, \
+         patch("custom_components.oura.statistics.async_import_statistics_ha") as mock_import_ha:
+        mock_er_get.return_value.async_get_entity_id.return_value = f"sensor.oura_ring_{sensor_key}"
+        await _create_statistic(mock_hass, sensor_key, data_points, mock_config_entry)
+
+    assert not mock_import_ha.called
 
 
 @pytest.mark.anyio
@@ -396,9 +439,9 @@ async def test_create_statistic_seeds_sum_from_baseline(mock_hass, mock_config_e
          patch("custom_components.oura.statistics._get_baseline_sum", new=AsyncMock(return_value=1000.0)):
         mock_registry = MagicMock()
         mock_er_get.return_value = mock_registry
-        mock_registry.async_get_entity_id.return_value = "sensor.oura_ring_steps"
+        mock_registry.async_get_entity_id.return_value = None
 
-        await _create_statistic(mock_hass, "steps", data_points, mock_config_entry)
+        await _create_statistic(mock_hass, "daily_workouts", data_points, mock_config_entry)
 
     _, _, statistics = mock_import_ha.call_args.args
     # Sums continue from the 1000.0 baseline instead of restarting at zero
