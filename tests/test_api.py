@@ -263,3 +263,39 @@ async def test_async_get_sends_integration_user_agent():
     headers = client.client_session.get.call_args.kwargs["headers"]
     assert "oura-v2-custom-component" in headers["User-Agent"]
     assert headers["User-Agent"].startswith("HomeAssistant/")
+
+
+@pytest.mark.anyio
+async def test_date_range_endpoint_follows_next_token():
+    """Ranges over one page (1,000 documents) must not drop later pages (issue #88)."""
+    client = _make_client_with_mock_http()
+    _mock_get_sequence(
+        client,
+        [
+            (None, {"data": [{"day": "2022-11-19"}], "next_token": "abc"}),
+            (None, {"data": [{"day": "2025-10-04"}], "next_token": None}),
+        ],
+    )
+
+    result = await client._async_get_sleep(date(2022, 11, 19), date(2026, 10, 30))
+
+    assert result == {"data": [{"day": "2022-11-19"}, {"day": "2025-10-04"}]}
+    second_call_params = client.client_session.get.call_args_list[1].kwargs["params"]
+    assert second_call_params == {"next_token": "abc"}
+
+
+@pytest.mark.anyio
+async def test_optional_endpoint_returns_empty_on_403_from_later_page():
+    """A 401/403 on a follow-up page is still treated as a feature-unavailable endpoint."""
+    client = _make_client_with_mock_http()
+    _mock_get_sequence(
+        client,
+        [
+            (None, {"data": [{"day": "2024-01-01"}], "next_token": "abc"}),
+            (_client_response_error(403), None),
+        ],
+    )
+
+    result = await client._async_get_workout(date(2024, 1, 1), date(2026, 1, 1))
+
+    assert result == {"data": []}
