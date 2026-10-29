@@ -53,6 +53,8 @@ Thanks to [@pavelnikanovich](https://github.com/pavelnikanovich) for the detaile
 
 Thanks to [@jrx-code](https://github.com/jrx-code) for the stale-state fix and the Ring Last Sync sensor in #87.
 
+**Full changes**: [#91](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/91), [#87](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/87), [#89](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/89), [#90](https://github.com/louispires/Oura-Home-Assistant-Integration/pull/90)
+
 # Oura Ring v2 Integration v2.11.0
 
 ## ✨ NEW IN v2.11.0 — Oura OpenAPI 1.41 alignment
