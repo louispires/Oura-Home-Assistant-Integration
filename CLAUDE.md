@@ -73,5 +73,5 @@ To add an API endpoint: add to `API_ENDPOINTS` dict in `api.py`, add `_async_get
 
 - `.github/copilot-instructions.md` — same scope as this file, kept in sync
 - `docs/INSTALLATION.md`, `docs/SENSORS.md`, `docs/DASHBOARDS.md`, `docs/TROUBLESHOOTING.md`, `docs/CONTRIBUTING.md`, `docs/PROJECT_SUMMARY.md`
-- `docs/Oura API/` — OpenAPI schemas 1.27 → 1.41 (latest: `openapi-1.41.json`)
+- `docs/Oura API/` — OpenAPI schemas 1.27 → 1.43 (latest: `openapi-1.43.json`)
 - `plans/` — phase-completion notes from past modernization passes (historical context, not active TODOs)

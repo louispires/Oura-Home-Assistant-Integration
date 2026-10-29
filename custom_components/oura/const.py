@@ -3,9 +3,13 @@ from datetime import timedelta
 from typing import Final
 
 from homeassistant.const import UnitOfEnergy, UnitOfLength, UnitOfTime
+from homeassistant.helpers.aiohttp_client import SERVER_SOFTWARE
 from homeassistant.helpers.entity import EntityCategory
 
 DOMAIN: Final = "oura"
+
+# Oura API 1.43 requires a User-Agent naming the client app; HA's default only names HA.
+USER_AGENT: Final = f"{SERVER_SOFTWARE} oura-v2-custom-component"
 
 # Ring hardware type → model display name
 RING_MODEL_NAMES: Final = {
@@ -192,6 +196,7 @@ SENSOR_TYPES: Final = {
 
     # Ring battery sensor
     "ring_battery_level": {"name": "Ring Battery Level", "icon": "mdi:battery", "unit": "%", "device_class": "battery", "state_class": "measurement", "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "ring_battery_level"},
+    "ring_last_sync": {"name": "Ring Last Sync", "icon": "mdi:cloud-sync", "unit": None, "device_class": "timestamp", "state_class": None, "entity_category": EntityCategory.DIAGNOSTIC, "data_category": "ring_battery_level"},
 }
 
 # Daily sums that also get a never-resetting lifetime counter. Their long-term history lives

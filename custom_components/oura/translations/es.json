@@ -118,6 +118,7 @@
       "rest_mode_start": {"name": "Inicio del modo de descanso"},
       "rest_mode_end": {"name": "Fin del modo de descanso"},
       "ring_battery_level": {"name": "Nivel de batería del anillo"},
+      "ring_last_sync": {"name": "Última sincronización del anillo"},
       "deep_sleep_score": {"name": "Contribución del sueño profundo"},
       "rem_sleep_score": {"name": "Contribución del sueño REM"},
       "total_sleep_score": {"name": "Contribución del sueño total"},

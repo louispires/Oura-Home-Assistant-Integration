@@ -165,3 +165,30 @@ async def test_reset_marker_reconciles_on_next_poll(
         await coordinator._async_update_data()
 
     assert mock_import.called
+
+
+@pytest.mark.anyio
+async def test_reconcile_poll_takes_state_from_regular_window(
+    mock_hass, mock_config_entry, mock_oura_api_data
+):
+    """The wide reconcile fetch feeds statistics only, never entity state.
+
+    Otherwise a score older than the 1-day window reappears for one poll a day
+    and goes unavailable again on the next poll.
+    """
+    coordinator = _bare_coordinator(mock_hass, mock_config_entry, mock_oura_api_data)
+    wide_data = {"readiness": {"data": [{"day": "2024-01-10", "score": 88}]}}
+    state_data = {"ring_battery_level": {"data": [{"timestamp": "2024-01-15T06:00:00Z", "level": 50}]}}
+    coordinator.api_client.async_get_data = AsyncMock(side_effect=[wide_data, state_data])
+
+    with patch(
+        "custom_components.oura.coordinator.async_import_statistics", new=AsyncMock()
+    ) as mock_import:
+        result = await coordinator._async_update_data()
+
+    reconcile_days = coordinator.api_client.async_get_data.await_args_list[0].kwargs["days_back"]
+    assert reconcile_days > 1
+    assert coordinator.api_client.async_get_data.await_args_list[1].kwargs == {"days_back": 1}
+    assert mock_import.await_args.args[1] is wide_data
+    assert "readiness_score" not in result
+    assert result["ring_battery_level"] == 50

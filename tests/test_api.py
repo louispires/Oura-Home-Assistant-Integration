@@ -256,16 +256,64 @@ async def test_heartrate_batched_requests_only_consumed_fields():
 async def test_sleep_detail_fetches_buffer_day_and_filters_prior():
     """/sleep filters by bedtime_start: a night that began the evening before start_date is fetched (#86)."""
     client = _make_client_with_mock_http()
-    client._async_get = AsyncMock(return_value={"data": [
+    client._async_get_all_pages = AsyncMock(return_value=[
         {"day": "2026-10-23", "type": "long_sleep"},
         {"day": "2026-10-24", "type": "long_sleep"},
         {"day": "2026-10-25", "type": "late_nap"},
         {"day": None, "type": "rest"},
-    ], "next_token": None})
+    ])
 
     result = await client._async_get_sleep_detail(date(2026, 10, 24), date(2026, 10, 26))
 
-    params = client._async_get.await_args.args[1]
+    params = client._async_get_all_pages.await_args.args[1]
     assert params == {"start_date": "2026-10-23", "end_date": "2026-10-26"}
     assert [record["day"] for record in result["data"]] == ["2026-10-24", "2026-10-25"]
-    assert result["next_token"] is None
+
+
+@pytest.mark.anyio
+async def test_async_get_sends_integration_user_agent():
+    """Oura API 1.43 requires a User-Agent that names the client app."""
+    client = _make_client_with_mock_http()
+    _mock_get_sequence(client, [(None, {"data": []})])
+
+    await client._async_get("https://api.ouraring.com/v2/usercollection/daily_activity")
+
+    headers = client.client_session.get.call_args.kwargs["headers"]
+    assert "oura-v2-custom-component" in headers["User-Agent"]
+    assert headers["User-Agent"].startswith("HomeAssistant/")
+
+
+@pytest.mark.anyio
+async def test_date_range_endpoint_follows_next_token():
+    """Ranges over one page (1,000 documents) must not drop later pages (issue #88)."""
+    client = _make_client_with_mock_http()
+    _mock_get_sequence(
+        client,
+        [
+            (None, {"data": [{"day": "2022-11-19"}], "next_token": "abc"}),
+            (None, {"data": [{"day": "2025-10-04"}], "next_token": None}),
+        ],
+    )
+
+    result = await client._async_get_sleep(date(2022, 11, 19), date(2026, 10, 30))
+
+    assert result == {"data": [{"day": "2022-11-19"}, {"day": "2025-10-04"}]}
+    second_call_params = client.client_session.get.call_args_list[1].kwargs["params"]
+    assert second_call_params == {"next_token": "abc"}
+
+
+@pytest.mark.anyio
+async def test_optional_endpoint_returns_empty_on_403_from_later_page():
+    """A 401/403 on a follow-up page is still treated as a feature-unavailable endpoint."""
+    client = _make_client_with_mock_http()
+    _mock_get_sequence(
+        client,
+        [
+            (None, {"data": [{"day": "2024-01-01"}], "next_token": "abc"}),
+            (_client_response_error(403), None),
+        ],
+    )
+
+    result = await client._async_get_workout(date(2024, 1, 1), date(2026, 1, 1))
+
+    assert result == {"data": []}

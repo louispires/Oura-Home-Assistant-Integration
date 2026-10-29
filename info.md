@@ -5,7 +5,7 @@ A modern Home Assistant custom integration for Oura Ring using the v2 API with O
 ## Features
 
 ✅ **OAuth2 Authentication** - Secure authentication using Home Assistant's application credentials  
-✅ **Comprehensive Data** - 117 sensors and 2 binary sensors covering sleep, readiness, activity, workout, session, tag, rest mode, stress, resilience, ring battery, lifetime totals, and more  
+✅ **Comprehensive Data** - 118 sensors and 2 binary sensors covering sleep, readiness, activity, workout, session, tag, rest mode, stress, resilience, ring battery, lifetime totals, and more  
 ✅ **Extended Historical Data** - Load up to 48 months (4 years) of historical data on first setup (default: 3 months)  
 ✅ **Configurable Updates** - Data refresh interval configurable from 1-60 minutes (default: 5 minutes)  
 ✅ **Modern Architecture** - Built following the latest Home Assistant standards  
@@ -42,7 +42,7 @@ Readiness Score, Temperature Deviation, Temperature Trend Deviation, Resting Hea
 
 ### Heart, Stress, and Advanced Metrics
 
-Current/Average/Minimum/Maximum Heart Rate, Last Heart Rate Reading, Stress High Duration, Recovery High Duration, Stress Day Summary, Resilience Level, Sleep Recovery Score, Daytime Recovery Score, Stress Resilience Score, SpO2 Average, Breathing Disturbance Index, VO2 Max, Cardiovascular Age, Pulse Wave Velocity, Optimal Bedtime Start, Optimal Bedtime End, Ring Battery Level
+Current/Average/Minimum/Maximum Heart Rate, Last Heart Rate Reading, Stress High Duration, Recovery High Duration, Stress Day Summary, Resilience Level, Sleep Recovery Score, Daytime Recovery Score, Stress Resilience Score, SpO2 Average, Breathing Disturbance Index, VO2 Max, Cardiovascular Age, Pulse Wave Velocity, Optimal Bedtime Start, Optimal Bedtime End, Ring Battery Level, Ring Last Sync
 
 ### Workout, Session, Tags, and Rest Mode
 
@@ -56,7 +56,7 @@ Lifetime Total/Deep/REM/Light Sleep Duration, Lifetime Awake Time, Lifetime Time
 
 Rest Mode, Ring Charging
 
-**Total: 117 sensors + 2 binary sensors** providing comprehensive health tracking
+**Total: 118 sensors + 2 binary sensors** providing comprehensive health tracking
 
 Sleep Efficiency is now sourced from Oura detailed sleep data so it reflects the actual percentage rather than the contributor score.
 

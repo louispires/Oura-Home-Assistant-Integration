@@ -11,7 +11,7 @@ Works with **Gen 3**, **Ring 4**, and **Ring 5**. **Requires Home Assistant 2026
 
 ## Features
 
-- **117 sensors + 2 binary sensors**: sleep, readiness, activity, heart rate and HRV, stress and resilience, SpO2, VO2 Max, cardiovascular age, workouts, mindfulness sessions, tags, rest mode, ring battery, and lifetime totals. See the [Sensor Reference](docs/SENSORS.md).
+- **118 sensors + 2 binary sensors**: sleep, readiness, activity, heart rate and HRV, stress and resilience, SpO2, VO2 Max, cardiovascular age, workouts, mindfulness sessions, tags, rest mode, ring battery, and lifetime totals. See the [Sensor Reference](docs/SENSORS.md).
 - **History on first setup**: imports 1-48 months (default 3) of past data as long-term statistics with the correct dates.
 - **Late-data backfill**: once a day re-imports the last 7 days (configurable) so data Oura syncs late lands on the right date.
 - **Latest sleep tracking**: Latest Bedtime Start/End follow the most recent session, naps included, for sleep-based automations.
@@ -61,7 +61,7 @@ Detailed instructions and fixes for common OAuth errors: [Installation Guide](do
 | Sleep Optimization | 2 | Optimal bedtime window |
 | Workouts | 7 | Workouts today and details of the latest workout |
 | Sessions and Tags | 4 | Mindfulness sessions, meditation time, today's tags |
-| Rest Mode and Ring | 3 | Rest mode window, ring battery level |
+| Rest Mode and Ring | 4 | Rest mode window, ring battery level, ring last sync |
 | Lifetime Counters | 19 | Never-resetting totals of steps, calories, sleep durations, and the other daily sums; they hold the history of those sums |
 | Binary sensors | 2 | Rest mode, ring charging |
 

@@ -159,7 +159,7 @@ This guide walks you through installing and configuring the Oura Ring v2 integra
    - Stress/resilience and advanced metrics
    - Workout/session/tag/rest-mode sensors
    - Ring battery diagnostics and binary sensors
-   - Current total: 117 sensors + 2 binary sensors
+   - Current total: 118 sensors + 2 binary sensors
 
 ### Test Data Retrieval
 

@@ -1,5 +1,5 @@
 """Tests for ring battery level and ring configuration functionality."""
-from datetime import date
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -40,6 +40,22 @@ class TestProcessRingBatteryLevel:
 
         assert processed["ring_battery_level"] == 72
         assert processed["ring_battery_charging"] is False
+
+    def test_last_sync_is_latest_sample_timestamp(self):
+        """ring_last_sync is the UTC timestamp of the newest battery sample."""
+        coordinator = OuraDataUpdateCoordinator.__new__(OuraDataUpdateCoordinator)
+        data = {
+            "ring_battery_level": {
+                "data": [
+                    {"timestamp": "2024-01-15T06:00:00Z", "level": 80, "charging": False},
+                    {"timestamp": "2024-01-15T08:00:00+02:00", "level": 72, "charging": False},
+                ]
+            }
+        }
+        processed = {}
+        coordinator._process_ring_battery_level(data, processed)
+
+        assert processed["ring_last_sync"] == datetime(2024, 1, 15, 6, 0, tzinfo=UTC)
 
     def test_battery_level_while_charging(self):
         """Battery level and charging=True are extracted correctly."""

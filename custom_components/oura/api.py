@@ -16,7 +16,7 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
-from .const import API_BASE_URL
+from .const import API_BASE_URL, USER_AGENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -120,7 +120,7 @@ class OuraApiClient:
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
         }
-        return await self._async_get(url, params)
+        return await self._async_get_range(url, params)
 
     async def _async_get_readiness(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
         """Get readiness data."""
@@ -129,7 +129,7 @@ class OuraApiClient:
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
         }
-        return await self._async_get(url, params)
+        return await self._async_get_range(url, params)
 
     async def _async_get_activity(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
         """Get activity data."""
@@ -138,7 +138,7 @@ class OuraApiClient:
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
         }
-        return await self._async_get(url, params)
+        return await self._async_get_range(url, params)
 
     async def _async_get_heartrate(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
         """Get heart rate data, following pagination and batching >30-day ranges."""
@@ -201,13 +201,12 @@ class OuraApiClient:
             "start_date": (start_date - timedelta(days=1)).isoformat(),
             "end_date": end_date.isoformat(),
         }
-        result = await self._async_get(url, params)
-        if isinstance(result, dict) and isinstance(result.get("data"), list):
-            start_iso = start_date.isoformat()
-            result["data"] = [
-                record for record in result["data"]
-                if (record.get("day") or "") >= start_iso
-            ]
+        result = await self._async_get_range(url, params)
+        start_iso = start_date.isoformat()
+        result["data"] = [
+            record for record in result["data"]
+            if (record.get("day") or "") >= start_iso
+        ]
         return result
 
     async def _async_get_stress(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
@@ -217,7 +216,7 @@ class OuraApiClient:
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
         }
-        return await self._async_get(url, params)
+        return await self._async_get_range(url, params)
 
     async def _async_get_resilience(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
         """Get daily resilience data.
@@ -231,7 +230,7 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         try:
-            return await self._async_get(url, params)
+            return await self._async_get_range(url, params)
         except ClientResponseError as err:
             if err.status in (401, 403):  # Feature not available or subscription expired
                 return {"data": []}
@@ -249,7 +248,7 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         try:
-            return await self._async_get(url, params)
+            return await self._async_get_range(url, params)
         except ClientResponseError as err:
             if err.status in (401, 403):  # Feature not available (Gen3/Ring4 only) or subscription expired
                 return {"data": []}
@@ -267,7 +266,7 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         try:
-            return await self._async_get(url, params)
+            return await self._async_get_range(url, params)
         except ClientResponseError as err:
             if err.status in (401, 403):  # Feature not available or subscription expired
                 return {"data": []}
@@ -285,7 +284,7 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         try:
-            return await self._async_get(url, params)
+            return await self._async_get_range(url, params)
         except ClientResponseError as err:
             if err.status in (401, 403):  # Feature not available or subscription expired
                 return {"data": []}
@@ -298,7 +297,7 @@ class OuraApiClient:
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
         }
-        return await self._async_get(url, params)
+        return await self._async_get_range(url, params)
 
     async def _async_get_workout(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Any]:
         """Get workout data."""
@@ -308,7 +307,7 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         try:
-            return await self._async_get(url, params)
+            return await self._async_get_range(url, params)
         except ClientResponseError as err:
             if err.status in (401, 403):
                 return {"data": []}
@@ -322,7 +321,7 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         try:
-            return await self._async_get(url, params)
+            return await self._async_get_range(url, params)
         except ClientResponseError as err:
             if err.status in (401, 403):
                 return {"data": []}
@@ -336,7 +335,7 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         try:
-            return await self._async_get(url, params)
+            return await self._async_get_range(url, params)
         except ClientResponseError as err:
             if err.status in (401, 403):
                 return {"data": []}
@@ -350,7 +349,7 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         try:
-            return await self._async_get(url, params)
+            return await self._async_get_range(url, params)
         except ClientResponseError as err:
             if err.status in (401, 403):
                 return {"data": []}
@@ -364,7 +363,7 @@ class OuraApiClient:
             "end_date": end_date.isoformat(),
         }
         try:
-            return await self._async_get(url, params)
+            return await self._async_get_range(url, params)
         except ClientResponseError as err:
             if err.status in (401, 403):
                 return {"data": []}
@@ -402,6 +401,14 @@ class OuraApiClient:
                 break
             current_params = {"next_token": next_token}
         return all_data
+
+    async def _async_get_range(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
+        """Fetch a date-range endpoint across all pages.
+
+        Oura caps each page at 1,000 documents, so long historical imports and
+        reconciles would otherwise silently stop after the first page (issue #88).
+        """
+        return {"data": await self._async_get_all_pages(url, params)}
 
     async def _async_get(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make GET request to Oura API, retrying once on 429 per Retry-After."""
@@ -454,6 +461,7 @@ class OuraApiClient:
 
             headers = {
                 "Authorization": f"Bearer {token['access_token']}",
+                "User-Agent": USER_AGENT,
             }
 
             async with self.client_session.get(url, headers=headers, params=params) as response:
