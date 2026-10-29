@@ -16,7 +16,7 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
-from .const import API_BASE_URL
+from .const import API_BASE_URL, USER_AGENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -442,6 +442,7 @@ class OuraApiClient:
 
             headers = {
                 "Authorization": f"Bearer {token['access_token']}",
+                "User-Agent": USER_AGENT,
             }
 
             async with self.client_session.get(url, headers=headers, params=params) as response:

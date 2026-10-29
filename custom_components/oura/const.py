@@ -3,9 +3,13 @@ from datetime import timedelta
 from typing import Final
 
 from homeassistant.const import UnitOfEnergy, UnitOfLength, UnitOfTime
+from homeassistant.helpers.aiohttp_client import SERVER_SOFTWARE
 from homeassistant.helpers.entity import EntityCategory
 
 DOMAIN: Final = "oura"
+
+# Oura API 1.43 requires a User-Agent naming the client app; HA's default only names HA.
+USER_AGENT: Final = f"{SERVER_SOFTWARE} oura-v2-custom-component"
 
 # Ring hardware type → model display name
 RING_MODEL_NAMES: Final = {

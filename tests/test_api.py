@@ -250,3 +250,16 @@ async def test_heartrate_batched_requests_only_consumed_fields():
     assert client._async_get_all_pages.await_count > 1
     for call in client._async_get_all_pages.await_args_list:
         assert call.args[1]["fields"] == "timestamp,bpm"
+
+
+@pytest.mark.anyio
+async def test_async_get_sends_integration_user_agent():
+    """Oura API 1.43 requires a User-Agent that names the client app."""
+    client = _make_client_with_mock_http()
+    _mock_get_sequence(client, [(None, {"data": []})])
+
+    await client._async_get("https://api.ouraring.com/v2/usercollection/daily_activity")
+
+    headers = client.client_session.get.call_args.kwargs["headers"]
+    assert "oura-v2-custom-component" in headers["User-Agent"]
+    assert headers["User-Agent"].startswith("HomeAssistant/")

@@ -63,4 +63,4 @@ See [docs/](../docs/) for detailed guides:
 - [TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md) — common issues
 - [CONTRIBUTING.md](../docs/CONTRIBUTING.md) — contribution workflow
 - [PROJECT_SUMMARY.md](../docs/PROJECT_SUMMARY.md) — component overview
-- [Oura API specs](../docs/Oura%20API/) — OpenAPI schemas 1.27 → 1.41 (latest: `openapi-1.41.json`)
+- [Oura API specs](../docs/Oura%20API/) — OpenAPI schemas 1.27 → 1.43 (latest: `openapi-1.43.json`)
